@@ -1,0 +1,337 @@
+<!-- malpractice_log.html -->
+{% include 'header.html' %}
+<br><br><br><br>
+
+<!-- jQuery, then Popper.js, then Bootstrap JS (v4.x) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+<!-- Ding Sound (Only plays when there is an "alert" in context) -->
+<audio id="dingSound" src="https://www.fesliyanstudios.com/play-mp3/4386" preload="auto"></audio>
+{% if alert %}
+<script>
+  // As soon as the DOM is ready
+  document.addEventListener('DOMContentLoaded', function() {
+    const sound = document.getElementById("dingSound");
+    // Attempt to play audio
+    sound.play()
+      .then(() => {
+        // Audio playing was successful, wait a bit then show alert
+        setTimeout(() => {
+          alert("New Malpractice Detected!!");
+        }, 300);
+      })
+      .catch((error) => {
+        // Autoplay likely blocked; show alert anyway
+        console.warn("Audio autoplay blocked:", error);
+        alert("New Malpractice Detected!!");
+      });
+  });
+</script>
+{% endif %}
+
+<!-- Custom Inline Styles (Optional) -->
+<style>
+  body {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  }
+  .malpractice-section {
+    min-height: 70vh;
+    padding: 40px 0;
+  }
+  .malpractice-heading {
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 2px;
+    margin-bottom: 2rem;
+    color: #333;
+    position: relative;
+  }
+  .malpractice-heading::after {
+    content: "";
+    display: block;
+    width: 80px;
+    height: 3px;
+    background-color: #007bff;
+    margin: 10px auto 0;
+  }
+  /* Table Styling */
+  .table-container {
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  }
+  .table th {
+    background-color: #f7f9fc;
+    font-weight: 600;
+  }
+  .table td,
+  .table th {
+    vertical-align: middle;
+  }
+  .table thead th {
+    border-bottom: 2px solid #dee2e6;
+  }
+  .table-striped tbody tr.reviewed {
+    background-color: #e0f7fa; /* Light cyan for reviewed rows */
+  }
+  /* Modal Customization */
+  .modal-content {
+    border-radius: 8px;
+  }
+  .modal-header {
+    background: #007bff;
+    color: #fff;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+  }
+  .modal-header .modal-title {
+    font-weight: 600;
+  }
+  .close {
+    color: #fff;
+    opacity: 1;
+  }
+  .close:hover {
+    color: #ffc107;
+  }
+  /* Button sizing (make all buttons consistent) */
+  .btn,
+  .btn-group .btn {
+    padding: 6px 14px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 5px;
+  }
+  /* Download Button */
+  .btn-download {
+    background-color: #007bff;
+    border-color: #007bff;
+    font-weight: 600;
+    transition: background-color 0.3s ease;
+  }
+  .btn-download:hover {
+    background-color: #0056b3;
+    border-color: #004998;
+  }
+  /* Button styles */
+  .btn-review {
+    min-width: 120px;
+  }
+
+  /* Highlight reviewed decisions */
+  .btn-reviewed-yes {
+    background-color: #28a745 !important;
+    color: #fff;
+  }
+
+  .btn-reviewed-no {
+    background-color: #dc3545 !important;
+    color: #fff;
+  }
+
+  /* Button hover feedback */
+  .btn:hover:not(:disabled) {
+    opacity: 0.9;
+  }
+
+  .btn:disabled {
+    cursor: not-allowed;
+  }
+
+  /* Optional: Hover feedback */
+  .btn-group .btn:hover:not(:disabled) {
+    opacity: 0.9;
+  }
+  /* Dim row after review */
+  .dimmed {
+    opacity: 0.5;
+  }
+  /* Dimmed row if reviewed */
+  .reviewed-row {
+    opacity: 0.6;
+    background-color: #f0f0f0 !important;
+  }
+
+</style>
+
+<!-- Malpractice Section Start -->
+<section class="malpractice-section">
+  <div class="container">
+    <div class="row">
+      <div class="col-md-12 text-center mb-4">
+        <h2 class="malpractice-heading">Malpractice Log</h2>
+      </div>
+    </div>
+
+    <div class="row justify-content-center">
+      <div class="col-lg-10">
+        <div class="table-container">
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th scope="col">Sl. No</th>
+                <th scope="col">Date</th>
+                <th scope="col">Time</th>
+                <th scope="col">Malpractice</th>
+                <th scope="col">View</th>
+                <th scope="col">Download</th>
+                {% if is_admin %}
+                  <th scope="col">Review Malpractice</th>
+                {% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for i in result %}
+              <tr class="{% if is_admin and i.verified %}reviewed-row{% endif %}">
+                <td>{{ forloop.counter }}</td>
+                <td>{{ i.date }}</td>
+                <td>{{ i.time }}</td>
+                <td>{{ i.malpractice }}</td>
+            
+                <td>
+                  <button 
+                    type="button"
+                    class="btn btn-secondary"
+                    data-toggle="modal"
+                    data-target="#videoModal"
+                    onclick="playVideo('{{ i.proof }}')"
+                  >
+                    View
+                  </button>
+                </td>
+            
+                <td>
+                  <a href="/media/{{ i.proof }}" download class="btn btn-primary">
+                    Download
+                  </a>
+                </td>
+            
+                {% if is_admin %}
+                <td>
+                  <div class="btn-group" role="group">
+                    <button
+                      class="btn btn-success btn-review {% if i.verified and i.is_malpractice %}btn-reviewed-yes{% endif %}"
+                      onclick="reviewMalpractice(this, 'yes')"
+                      {% if i.verified %}disabled{% endif %}
+                    >
+                      Malpractice
+                    </button>
+                    <button
+                      class="btn btn-danger btn-review {% if i.verified and not i.is_malpractice %}btn-reviewed-no{% endif %}"
+                      onclick="reviewMalpractice(this, 'no')"
+                      {% if i.verified %}disabled{% endif %}
+                    >
+                      Not Malpractice
+                    </button>
+                  </div>
+                </td>
+                {% endif %}
+              </tr>
+              {% endfor %}
+            </tbody>
+            
+            
+            
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- Malpractice Section End -->
+
+<!-- Modal for Video (Bootstrap 4) -->
+<div class="modal fade" id="videoModal" tabindex="-1" role="dialog" aria-labelledby="videoModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="videoModalLabel">Video Analysis</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body text-center">
+        <video id="videoPlayer" width="100%" controls autoplay muted playsinline>
+          Your browser does not support the video tag.
+        </video>
+        <div id="videoError" class="text-danger mt-2" style="display: none;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // VIEW VIDEO
+  function playVideo(videoUrl) {
+    const videoPlayer = document.getElementById('videoPlayer');
+    const errorDisplay = document.getElementById('videoError');
+    errorDisplay.style.display = 'none';
+
+    const mediaPath = `/media/${videoUrl}`;
+
+    // Reset previous <source> elements
+    videoPlayer.pause();
+    while(videoPlayer.firstChild) {
+      videoPlayer.removeChild(videoPlayer.firstChild);
+    }
+
+    const source = document.createElement('source');
+    source.src = mediaPath;
+    source.type = 'video/mp4';
+
+    source.onerror = () => {
+      errorDisplay.textContent = 'Error: Video file not found or invalid format';
+      errorDisplay.style.display = 'block';
+    };
+
+    videoPlayer.appendChild(source);
+
+    const playPromise = videoPlayer.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(error => {
+        errorDisplay.textContent = `Playback failed: ${error.message}`;
+        errorDisplay.style.display = 'block';
+      });
+    }
+  }
+
+  // NEW: Mark row as reviewed
+  function reviewMalpractice(button, decision) {
+  const row = button.closest('tr');
+  const proof = row.querySelector('a[download]').getAttribute('href').split('/').pop();
+
+  fetch(`/review_malpractice/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': '{{ csrf_token }}'
+    },
+    body: JSON.stringify({ proof: proof, decision: decision })
+  })
+  .then(response => {
+    if (response.ok) {
+      // Highlight row as reviewed
+      row.classList.add('reviewed-row');
+
+      // Disable both buttons
+      const buttons = row.querySelectorAll('.btn-review');
+      buttons.forEach(btn => {
+        btn.disabled = true;
+        btn.classList.remove('btn-reviewed-yes', 'btn-reviewed-no');
+      });
+
+      // Add highlight to clicked one
+      if (decision === 'yes') {
+        button.classList.add('btn-reviewed-yes');
+      } else {
+        button.classList.add('btn-reviewed-no');
+      }
+    }
+  });
+}
+
+</script>
+{% include 'footer.html' %}

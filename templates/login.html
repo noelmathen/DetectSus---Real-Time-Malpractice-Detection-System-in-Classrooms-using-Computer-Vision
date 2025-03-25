@@ -1,0 +1,140 @@
+<!-- login.html -->
+{% include 'header.html' %}
+
+<!-- Custom Style (Optional) -->
+<!-- You can move these styles into your project's main CSS file -->
+<style>
+  /* Gradient background for the entire page */
+  body {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    font-family: 'Poppins', sans-serif;
+  }
+  /* Center container adjustments */
+  .login-container {
+    max-width: 450px;
+    margin-top: 5rem;
+    margin-bottom: 5rem;
+  }
+  /* Card styling */
+  .login-card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  }
+  .login-card .card-body {
+    position: relative;
+  }
+  /* Title stylings */
+  .login-title {
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: #333;
+  }
+  /* Input field focus and hover */
+  .form-control:focus {
+    border-color: #007bff;
+    box-shadow: none;
+  }
+  .form-control:hover {
+    background-color: #f7f9fc;
+  }
+  /* Button stylings */
+  .btn-login {
+    background-color: #007bff;
+    border-color: #007bff;
+    font-weight: 600;
+    width: 100%;
+  }
+  .btn-login:hover {
+    background-color: #0056b3;
+    border-color: #004998;
+  }
+  /* Subtext link styling */
+  .subtext a {
+    text-decoration: none;
+    color: #007bff;
+  }
+  .subtext a:hover {
+    text-decoration: underline;
+  }
+</style>
+
+<!-- Login Section Start -->
+<div class="container login-container">
+  <div class="row justify-content-center">
+    <div class="col-md-12">
+      <div class="card login-card p-4">
+        <div class="card-body">
+          <h3 class="login-title text-center">Welcome Back</h3>
+          <p class="text-muted text-center mb-4">Log in to your account</p>
+
+          <form action="{% url 'addlogin' %}" method="POST">
+            {% csrf_token %}
+
+            <!-- Email Field -->
+            <div class="form-group mb-3">
+              <label for="username">Username:</label>
+              <div class="input-group">
+                <div class="input-group-prepend">
+                  <span class="input-group-text bg-white" id="email-icon">
+                    <i class="fas fa-envelope"></i>
+                  </span>
+                </div>
+                <input 
+                  class="form-control" 
+                  name="username" 
+                  id="username" 
+                  placeholder="Enter your username" 
+                  aria-describedby="email-icon"
+                  required
+                >
+              </div>
+            </div>
+
+            <!-- Password Field -->
+            <div class="form-group mb-3">
+              <label for="password">Password:</label>
+              <div class="input-group">
+                <div class="input-group-prepend">
+                  <span class="input-group-text bg-white" id="password-icon">
+                    <i class="fas fa-lock"></i>
+                  </span>
+                </div>
+                <input 
+                  type="password" 
+                  class="form-control" 
+                  name="password" 
+                  id="password"
+                  placeholder="Enter your password" 
+                  aria-describedby="password-icon"
+                  required
+                >
+              </div>
+            </div>
+
+            <!-- Login Button -->
+            <div class="form-group mt-4">
+              <button class="btn btn-primary btn-login py-2" type="submit">Login</button>
+            </div>
+
+            <!-- Register Redirect -->
+            <div class="text-center mt-3 subtext">
+              <p class="mb-0">
+                Don’t have an account? 
+                <a href="/register"><strong>Sign up</strong></a>
+              </p>
+            </div>
+
+          </form>
+          {% if error %}
+            <div class="alert alert-danger">{{ error }}</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Login Section End -->
+
+{% include 'footer.html' %}

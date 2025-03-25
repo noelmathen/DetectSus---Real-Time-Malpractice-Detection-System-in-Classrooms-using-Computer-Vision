@@ -1,0 +1,38 @@
+# Python
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+
+# VS Code
+.vscode/
+
+# Environment
+susenv
+
+# Django
+*.sqlite3
+db.sqlite3
+media/
+output.mp4
+
+# PyCharm
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Backup
+*.bak
+*.swp
+
+# Test outputs
+test_videos/

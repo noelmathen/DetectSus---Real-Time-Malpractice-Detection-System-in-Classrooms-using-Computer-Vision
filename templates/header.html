@@ -1,0 +1,210 @@
+<!-- header.html -->
+{% block content %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Exam Monitoring</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Favicon -->
+    <link href="{% static 'img/favicon.ico' %}" rel="icon">
+
+    <!-- Google Web Fonts -->
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link 
+      href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;800&display=swap" 
+      rel="stylesheet"
+    > 
+
+    <!-- Font Awesome -->
+    <link 
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/all.min.css" 
+      rel="stylesheet"
+    >
+
+    <!-- Customized Bootstrap Stylesheet -->
+    <link href="{% static 'css/style.css' %}" rel="stylesheet">
+
+    <!-- Optional Custom Styles -->
+    <style>
+      /* Topbar styling */
+      .topbar {
+        background: linear-gradient(90deg, #0056b3 0%, #007bff 100%);
+        color: #fff;
+        font-size: 0.9rem;
+      }
+      .topbar a {
+        color: #fff;
+      }
+      .topbar a:hover {
+        color: #ffe599;
+        text-decoration: none;
+      }
+      .topbar .contact-info small {
+        margin-right: 15px;
+      }
+      .topbar .social-icons a {
+        margin: 0 6px;
+        transition: color 0.3s ease;
+      }
+      .topbar .social-icons a:hover {
+        color: #ffe599;
+      }
+
+      /* Navbar brand styling */
+      .navbar-brand h1 {
+        font-weight: 700;
+        letter-spacing: 1px;
+        color: #007bff;
+      }
+      .navbar-brand h1 span {
+        color: #555;
+      }
+
+      /* Navigation link styling */
+      .navbar-nav .nav-link {
+        margin: 0 8px;
+        position: relative;
+        font-weight: 600;
+      }
+      /* Active link highlight */
+      .navbar-nav .nav-link.active {
+        color: #007bff !important;
+      }
+      .navbar-nav .nav-link::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        bottom: -5px;
+        width: 0%;
+        height: 2px;
+        background-color: #007bff;
+        transition: width 0.3s;
+      }
+      .navbar-nav .nav-link:hover::after {
+        width: 100%;
+      }
+      .navbar-nav .nav-link.active::after {
+        width: 100%;
+      }
+
+      /* Adjust the link spacing on smaller screens */
+      @media (max-width: 991.98px) {
+        .navbar-brand h1 {
+          font-size: 1.5rem;
+        }
+        .navbar-nav .nav-link {
+          margin: 5px 0;
+        }
+      }
+    </style>
+</head>
+
+<body>
+    <!-- Topbar Start -->
+    <div class="container-fluid topbar py-2">
+      <div class="container">
+        <div class="row align-items-center">
+          <!-- Left side: contact info -->
+          <div class="col-md-6 text-center text-md-left contact-info mb-2 mb-md-0">
+            <small>
+              <i class="fas fa-phone-alt mr-2"></i>
+              +91 9188022697
+            </small>
+            <small>
+              <i class="fas fa-envelope mr-2"></i>
+              detectsus@gmail.com
+            </small>
+          </div>
+          <!-- Right side: social icons -->
+          <div class="col-md-6 text-center text-md-right social-icons">
+            <a href="#"><i class="fab fa-facebook-f"></i></a>
+            <a href="#"><i class="fab fa-twitter"></i></a>
+            <a href="#"><i class="fab fa-linkedin-in"></i></a>
+            <a href="#"><i class="fab fa-instagram"></i></a>
+            <a href="#"><i class="fab fa-youtube"></i></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Topbar End -->
+
+    <!-- Navbar Start -->
+    <div class="container-fluid position-relative nav-bar p-0">
+      <div class="container-fluid position-relative p-0 px-lg-3" style="z-index: 9;">
+        <nav class="navbar navbar-expand-lg bg-white navbar-light py-3 py-lg-0 pl-3 pl-lg-5">
+          <!-- Brand / Logo -->
+          <a href="#" class="navbar-brand">
+            <h1 class="m-0">
+              <span>Detect</span>Sus
+            </h1>
+          </a>
+
+          <!-- Toggler (for mobile) -->
+          <button 
+            class="navbar-toggler" 
+            type="button" 
+            data-toggle="collapse" 
+            data-target="#navbarCollapse"
+            aria-controls="navbarCollapse" 
+            aria-expanded="false" 
+            aria-label="Toggle navigation"
+          >
+            <span class="navbar-toggler-icon"></span>
+          </button>
+
+          <!-- Navbar Links -->
+          <div class="collapse navbar-collapse justify-content-between px-3" id="navbarCollapse">
+            <ul class="navbar-nav ml-auto py-0">
+              {% if request.user.is_authenticated %}
+                <li class="nav-item">
+                  <a href="{% url 'index' %}"
+                    class="nav-link {% if request.path == '/index' or request.path == '/' %}active{% endif %}">
+                    HOME
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="{% url 'malpractice_log' %}"
+                    class="nav-link {% if request.path == '/malpractice_log' %}active{% endif %}">
+                    MALPRACTICE LOGS
+                  </a>
+                </li>
+                <li class="nav-item dropdown">
+                  <a class="nav-link dropdown-toggle" href="#" id="profileDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <i class="fas fa-user-circle"></i> {{ request.user.username }}
+                  </a>
+                  <div class="dropdown-menu dropdown-menu-right" aria-labelledby="profileDropdown">
+                    <a class="dropdown-item" href="{% url 'profile' %}">My Profile</a>
+                    <a class="dropdown-item" href="{% url 'logout' %}">Logout</a>
+                  </div>
+                </li>
+              {% else %}
+                <li class="nav-item">
+                  <a href="{% url 'index' %}"
+                    class="nav-link {% if request.path == '/index' or request.path == '/' %}active{% endif %}">
+                    HOME
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="{% url 'teacher_register' %}"
+                    class="nav-link {% if request.path == '/register' %}active{% endif %}">
+                    REGISTER
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="{% url 'login' %}"
+                    class="nav-link {% if request.path == '/login' %}active{% endif %}">
+                    LOGIN
+                  </a>
+                </li>
+              {% endif %}
+            </ul>
+          </div>
+        </nav>
+      </div>
+    </div>
+    <!-- Navbar End -->
+
+{% endblock %}

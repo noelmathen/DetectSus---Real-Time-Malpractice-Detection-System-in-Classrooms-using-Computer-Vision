@@ -1,0 +1,24 @@
+# urls.py
+from django.contrib import admin
+from django.urls import path
+from . import views
+from django.conf.urls import url
+from django.conf import settings
+from django.conf.urls.static import static
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('home',views.home),
+    path('',views.index),
+    path('index', views.index, name='index'),
+    path('register/teacher/', views.teacher_register, name='teacher_register'),
+    path('login/',views.login, name='login'),
+    path('login/addlogin', views.addlogin, name='addlogin'),
+    path('profile/', views.profile, name='profile'),
+    path('logout/',views.logout, name='logout'),
+    path('malpractice_log/',views.malpractice_log, name='malpractice_log'),
+    path('review_malpractice/', views.review_malpractice, name='review_malpractice'),
+]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

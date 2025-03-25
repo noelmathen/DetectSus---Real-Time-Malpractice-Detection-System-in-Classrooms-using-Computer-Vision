@@ -1,0 +1,169 @@
+{% extends "header.html" %}
+{% load static %}
+{% block content %}
+
+<style>
+  .profile-container {
+    margin-top: 60px;
+    margin-bottom: 60px;
+  }
+
+  .profile-card {
+    border-radius: 15px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+    background-color: #ffffff;
+    padding: 40px;
+    transition: all 0.3s ease-in-out;
+  }
+
+  .profile-heading {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #333;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 15px;
+    margin-bottom: 30px;
+  }
+
+  .profile-picture {
+    width: 170px;
+    height: 170px;
+    border-radius: 50%;
+    border: 5px solid #007bff;
+    object-fit: cover;
+    margin-bottom: 20px;
+    transition: 0.3s ease-in-out;
+  }
+
+  .profile-picture:hover {
+    transform: scale(1.05);
+  }
+
+  .badge-role {
+    font-size: 0.85rem;
+    background-color: #ffc107;
+    color: #212529;
+    padding: 5px 12px;
+    border-radius: 20px;
+    margin-top: 10px;
+    display: inline-block;
+  }
+
+  .profile-table th {
+    width: 150px;
+    font-weight: 600;
+    color: #555;
+  }
+
+  .profile-table td {
+    color: #333;
+  }
+
+  .btn-action {
+    min-width: 160px;
+    font-weight: 600;
+    margin: 5px 10px 0 0;
+  }
+
+  .btn-edit {
+    background-color: #007bff;
+    color: white;
+  }
+
+  .btn-edit:hover {
+    background-color: #0056b3;
+  }
+
+  .btn-password {
+    background-color: #6c757d;
+    color: white;
+  }
+
+  .btn-password:hover {
+    background-color: #545b62;
+  }
+
+  .admin-highlight {
+    border-left: 6px solid #007bff;
+    background-color: #f0f8ff;
+    padding: 10px 20px;
+    margin-bottom: 20px;
+    font-weight: 600;
+    color: #004080;
+  }
+</style>
+
+<div class="container profile-container">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <div class="profile-card">
+
+        {% if request.user.is_superuser %}
+          <div class="admin-highlight">
+            🔐 You are logged in as <strong>Admin</strong>. You have full access to all system functionalities.
+          </div>
+        {% endif %}
+
+        <div class="row">
+          <!-- Profile Picture and Role -->
+          <div class="col-md-4 text-center">
+            {% if request.user.teacherprofile.profile_picture %}
+              <img src="{{ request.user.teacherprofile.profile_picture.url }}" class="profile-picture" alt="Profile Picture">
+            {% else %}
+              <img src="{% static 'img/default_profile.png' %}" class="profile-picture" alt="Default Picture">
+            {% endif %}
+
+            <div>
+              {% if request.user.is_superuser %}
+                <span class="badge-role">Admin</span>
+              {% else %}
+                <span class="badge-role">Teacher</span>
+              {% endif %}
+            </div>
+
+            <a href="#" class="btn btn-edit btn-action mt-3">Edit Profile</a>
+          </div>
+
+          <!-- User Info -->
+          <div class="col-md-8">
+            <h2 class="profile-heading">My Profile</h2>
+            <table class="table profile-table">
+              <tbody>
+                <tr>
+                  <th>Username:</th>
+                  <td>{{ request.user.username }}</td>
+                </tr>
+                <tr>
+                  <th>Email:</th>
+                  <td>{{ request.user.email }}</td>
+                </tr>
+                <tr>
+                  <th>First Name:</th>
+                  <td>{{ request.user.first_name }}</td>
+                </tr>
+                <tr>
+                  <th>Last Name:</th>
+                  <td>{{ request.user.last_name }}</td>
+                </tr>
+                <tr>
+                  <th>Date Joined:</th>
+                  <td>{{ request.user.date_joined|date:"F d, Y" }}</td>
+                </tr>
+                {% if not request.user.is_superuser %}
+                  <tr>
+                    <th>Phone:</th>
+                    <td>{{ request.user.teacherprofile.phone }}</td>
+                  </tr>
+                {% endif %}
+              </tbody>
+            </table>
+            <a href="#" class="btn btn-password btn-action">Change Password</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

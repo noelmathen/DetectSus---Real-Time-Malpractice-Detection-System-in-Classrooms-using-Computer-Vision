@@ -1,0 +1,141 @@
+<!-- register.html -->
+{% include 'header.html' %}
+
+<!-- Custom Styles (You can move these into a separate CSS file) -->
+<style>
+  /* Body gradient background */
+  body {
+    background: linear-gradient(135deg, #edf2f7 0%, #cfd9df 100%);
+    font-family: 'Poppins', sans-serif;
+  }
+
+  /* Centered container styling */
+  .register-container {
+    max-width: 700px;
+    margin-top: 4rem;
+    margin-bottom: 4rem;
+  }
+
+  /* Card styling for the registration form */
+  .register-card {
+    background-color: #fff;
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    padding: 30px;
+  }
+
+  /* Header text style */
+  .register-title {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 1rem;
+  }
+
+  /* Labels and input fields styling */
+  .form-group label {
+    font-weight: 500;
+  }
+  .form-control {
+    border-radius: 6px;
+  }
+  .form-control-file {
+    cursor: pointer;
+    border-radius: 6px;
+  }
+  .form-control:focus {
+    box-shadow: none;
+    border-color: #007bff;
+  }
+
+  /* Input group for icons */
+  .input-group-text {
+    background-color: #fff;
+    border-right: none;
+  }
+  .input-group .form-control {
+    border-left: none;
+  }
+
+  /* Button styling */
+  .btn-submit {
+    background-color: #007bff;
+    border-color: #007bff;
+    font-weight: 600;
+    width: 100%;
+    transition: background-color 0.3s ease;
+  }
+  .btn-submit:hover {
+    background-color: #0056b3;
+    border-color: #004992;
+  }
+
+  /* Media query for small screens */
+  @media (max-width: 576px) {
+    .register-container {
+      margin-top: 2rem;
+      margin-bottom: 2rem;
+      padding: 1rem;
+    }
+  }
+</style>
+
+<!-- Registration Section Start -->
+<div class="container register-container">
+  <div class="row">
+    <div class="col-12 text-center mb-4">
+      <h2 class="register-title">Teacher Registration</h2>
+    </div>
+  </div>
+
+  <div class="row justify-content-center">
+    <div class="col-md-12">
+      <div class="register-card">
+        <form action="{% url 'teacher_register' %}" method="POST" enctype="multipart/form-data">
+          {% csrf_token %}
+
+          <div class="form-group">
+            <label for="first_name">First Name:</label>
+            <input type="text" name="first_name" class="form-control" required>
+          </div>
+
+          <div class="form-group">
+            <label for="last_name">Last Name:</label>
+            <input type="text" name="last_name" class="form-control" required>
+          </div>
+
+          <div class="form-group">
+            <label for="email">Email ID:</label>
+            <input type="email" name="email" class="form-control" required>
+          </div>
+
+          <div class="form-group">
+            <label for="username">Username:</label>
+            <input type="text" name="username" class="form-control" required>
+          </div>
+
+          <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" name="password" class="form-control" required>
+          </div>
+
+          <div class="form-group">
+            <label for="phone">Phone Number:</label>
+            <input type="text" name="phone" class="form-control" required>
+          </div>
+
+          <div class="form-group">
+            <label for="profile_picture">Profile Picture:</label>
+            <input type="file" name="profile_picture" class="form-control-file" required>
+          </div>
+
+          <button type="submit" class="btn btn-submit mt-3">Register</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Registration Section End -->
+
+{% include 'footer.html' %}
