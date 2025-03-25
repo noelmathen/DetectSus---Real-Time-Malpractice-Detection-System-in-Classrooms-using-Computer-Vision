@@ -158,10 +158,12 @@ venv/
 
 ---
 
-## 👨‍💻 Contributors
+## 👨‍💻 Team Contributors
 
-- Noel Mathen
-- Team DetectSus
+- Allen Prince
+- Dea Elizabeth Varghese
+- Noel Mathen Eldho
+- Shruti Maria Shibu
 
 ---
 
@@ -173,7 +175,3 @@ venv/
 - Live dashboard with charts/analytics
 
 ---
-
-## 📝 License
-
-This project is for educational purposes under the IndiaAI Fellowship Scheme.
