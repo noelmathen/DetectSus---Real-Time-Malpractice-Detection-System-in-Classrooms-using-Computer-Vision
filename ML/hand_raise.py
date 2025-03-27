@@ -18,7 +18,7 @@ cursor = db.cursor()
 
 # Load YOLOv8 models
 pose_model = YOLO("yolov8n-pose.pt")  # For pose estimation
-#object_model = YOLO("yolov8n.pt")  # For object detection (mobile phones)
+#object_model = YOLO("yolov8n.pt")   # For object detection (mobile phones)
 
 # Choose between webcam or video file
 use_camera = False  
