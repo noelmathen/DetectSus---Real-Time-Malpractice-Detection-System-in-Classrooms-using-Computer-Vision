@@ -13,7 +13,7 @@ import json
 from django.db.models import Q
 from django.core.mail import send_mail
 from django.conf import settings
-
+from .utils import send_sms_notification
 
 # Global stop event
 stop_event = Event()
@@ -126,38 +126,67 @@ def malpractice_log(request):
 @login_required
 @user_passes_test(is_admin)
 def review_malpractice(request):
-    data = json.loads(request.body)
-    proof = data.get('proof')
-    decision = data.get('decision')
+    if request.method == 'POST' and request.user.is_superuser:
+        data = json.loads(request.body)
+        proof_filename = data.get('proof')
+        decision = data.get('decision')
+        try:
+            log = MalpraticeDetection.objects.get(proof=proof_filename)
+            log.verified = True
+            log.is_malpractice = (decision == 'yes')
+            log.save()
 
-    try:
-        log = MalpraticeDetection.objects.get(proof=proof)
-        log.verified = True
-        log.is_malpractice = (decision == 'yes')
-        log.save()
+            # If it's indeed malpractice -> notify assigned teacher by SMS
+            if log.is_malpractice and log.lecture_hall and log.lecture_hall.assigned_teacher:
+                # find teacher phone
+                teacher_user = log.lecture_hall.assigned_teacher
+                try:
+                    teacher_profile = teacher_user.teacherprofile
+                    if teacher_profile.phone:
+                        # Compose message
+                        message_body = (
+                            f"\n\nDear {teacher_user.get_full_name() or teacher_user.username},\n\n"
+                            f"A malpractice has been detected and approved by the admin.\n\n"
+                            f"Details:\n"
+                            f"- 📅 Date: {log.date}\n"
+                            f"- ⏰ Time: {log.time}\n"
+                            f"- 🎯 Type: {log.malpractice}\n"
+                            f"- 🏫 Lecture Hall: {log.lecture_hall.building} - {log.lecture_hall.hall_name}\n\n"
+                            f"You can view the recorded video proof from your DetectSus portal.\n\n"
+                            f"Best regards,\n"
+                            f"DetectSus Team"
+                        )
+                        message_body = (
+                            f"Dear {teacher_user.get_full_name() or teacher_user.username},\n\n"
+                            f"A malpractice has been detected and approved by the admin.\n\n"
+                            f"Details:\n"
+                            f"- 📅 Date: {log.date}\n"
+                            f"- ⏰ Time: {log.time}\n"
+                            f"- 🎯 Type: {log.malpractice}\n"
+                            f"- 🏫 Lecture Hall: {log.lecture_hall.building} - {log.lecture_hall.hall_name}\n\n"
+                            f"You can view the recorded video proof from your DetectSus portal.\n\n"
+                            f"Best regards,\n"
+                            f"DetectSus Team"
+                        )
+                        sms_message_body = (
+                            f"\nMalpractice confirmed by admin.\n"
+                            f"{log.date} at {log.time} - {log.malpractice} in {log.lecture_hall.building}-{log.lecture_hall.hall_name}.\n"
+                            f"Check DetectSus for video."
+                        )
 
-        # ✅ Send Email to Assigned Teacher if decision is 'yes'
-        if log.is_malpractice and log.lecture_hall and log.lecture_hall.assigned_teacher:
-            teacher = log.lecture_hall.assigned_teacher
-            subject = 'Malpractice Alert: New Case Reviewed'
-            message = (
-                f"Dear {teacher.get_full_name() or teacher.username},\n\n"
-                f"A malpractice has been detected and approved by the admin.\n\n"
-                f"Details:\n"
-                f"- 📅 Date: {log.date}\n"
-                f"- ⏰ Time: {log.time}\n"
-                f"- 🎯 Type: {log.malpractice}\n"
-                f"- 🏫 Lecture Hall: {log.lecture_hall.building} - {log.lecture_hall.hall_name}\n\n"
-                f"You can view the recorded video proof from your DetectSus portal.\n\n"
-                f"Best regards,\n"
-                f"DetectSus Team"
-            )
-            send_mail(subject, message, settings.EMAIL_HOST_USER, [teacher.email], fail_silently=False)
+                        # Send SMS
+                        send_sms_notification(f"+91 {teacher_profile.phone}", sms_message_body)
+                except TeacherProfile.DoesNotExist:
+                    print("problem")
+                    pass
 
-        return JsonResponse({"status": "success"})
+                subject = 'Malpractice Alert: New Case Reviewed'
+                send_mail(subject, message_body, settings.EMAIL_HOST_USER, [teacher_user.email], fail_silently=False)
+            return JsonResponse({'success': True})
+        except MalpraticeDetection.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Log not found'})
+    return JsonResponse({'success': False, 'error': 'Unauthorized or bad request'})
 
-    except MalpraticeDetection.DoesNotExist:
-        return JsonResponse({"error": "Log not found"}, status=404)
 
 
 
