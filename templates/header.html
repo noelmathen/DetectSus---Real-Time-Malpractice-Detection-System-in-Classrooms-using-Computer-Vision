@@ -171,6 +171,20 @@
                     MALPRACTICE LOGS
                   </a>
                 </li>
+                {% if request.user.is_superuser %}
+                  <li class="nav-item">
+                    <a href="{% url 'manage_lecture_halls' %}"
+                      class="nav-link {% if request.path == '/manage-lecture-halls/' %}active{% endif %}">
+                     MANAGE LECTURE HALLS
+                    </a>
+                  </li>
+                  <li class="nav-item">
+                    <a href="{% url 'view_teachers' %}"
+                       class="nav-link {% if request.path == '/view_teachers/' %}active{% endif %}">
+                       VIEW TEACHERS
+                    </a>
+                  </li>
+                {% endif %}
                 <li class="nav-item dropdown">
                   <a class="nav-link dropdown-toggle" href="#" id="profileDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     <i class="fas fa-user-circle"></i> {{ request.user.username }}

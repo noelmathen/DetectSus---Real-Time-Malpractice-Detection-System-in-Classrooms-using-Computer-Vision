@@ -102,6 +102,7 @@ while cap.isOpened():
 
             turning_back_check.append(turning_back)
 
+    
     print("malpractice:",malpractice)
     if malpractice >= 1 :
         if video_control == 0:
@@ -122,16 +123,32 @@ while cap.isOpened():
             date_str = now.date().isoformat()       # e.g., '2025-03-24'
             time_str = now.time().strftime('%H:%M:%S')  # e.g., '14:53:12'
 
-            # Update your destination path using full datetime
+            lecture_hall_name = "LH2"
+            building = "KE Block"
+
+            # Fetch the lecture hall object
+            cursor.execute(
+                "SELECT id FROM app_lecturehall WHERE hall_name = %s AND building = %s LIMIT 1",
+                (lecture_hall_name, building)
+            )
+            hall_result = cursor.fetchone()
+            hall_id = hall_result[0] if hall_result else None
+
+            # Save the output video
             timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
-            destination_path = f"../media/output_{timestamp}.mp4"
+            proof_filename = f"output_{timestamp}.mp4"
+            destination_path = f"../media/{proof_filename}"
             shutil.copy("output.mp4", destination_path)
 
-            # Make sure your database table has 'date' and 'time' fields
-            sql = "INSERT INTO app_malpraticedetection (date, time, malpractice, proof) VALUES (%s, %s, %s, %s)"
-            values = (date_str, time_str, "Turning Back", f"output_{timestamp}.mp4")
+            # Insert into malpractice table
+            sql = """
+                INSERT INTO app_malpraticedetection (date, time, malpractice, proof, lecture_hall_id)
+                VALUES (%s, %s, %s, %s, %s)
+            """
+            values = (date_str, time_str, "Turning Back", proof_filename, hall_id)
             cursor.execute(sql, values)
             db.commit()
+
             print("Data inserted successfully")
             malpractice = 0
             video_control = 0

@@ -1,6 +1,4 @@
-<!-- malpractice_log.html -->
 {% include 'header.html' %}
-<br><br><br><br>
 
 <!-- jQuery, then Popper.js, then Bootstrap JS (v4.x) -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -31,15 +29,21 @@
 </script>
 {% endif %}
 
-<!-- Custom Inline Styles (Optional) -->
+<!-- Page-Specific Styles -->
 <style>
   body {
     background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    margin: 0;
+    padding: 0;
   }
+
+  /* Spacing after header */
   .malpractice-section {
+    padding: 60px 0 40px; /* Extra top padding so content isn't hidden behind nav */
     min-height: 70vh;
-    padding: 40px 0;
   }
+
+  /* Section Heading */
   .malpractice-heading {
     text-transform: uppercase;
     font-weight: 700;
@@ -47,6 +51,7 @@
     margin-bottom: 2rem;
     color: #333;
     position: relative;
+    text-align: center;
   }
   .malpractice-heading::after {
     content: "";
@@ -56,26 +61,77 @@
     background-color: #007bff;
     margin: 10px auto 0;
   }
-  /* Table Styling */
+
+  /* Table Container */
   .table-container {
     background: #fff;
     border-radius: 8px;
     padding: 20px;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
   }
-  .table th {
+
+  /* Table Styling */
+  table.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+  }
+
+  table.table th {
     background-color: #f7f9fc;
     font-weight: 600;
-  }
-  .table td,
-  .table th {
+    text-align: center;
     vertical-align: middle;
-  }
-  .table thead th {
+    padding: 12px;
     border-bottom: 2px solid #dee2e6;
   }
-  .table-striped tbody tr.reviewed {
-    background-color: #e0f7fa; /* Light cyan for reviewed rows */
+
+  table.table td {
+    text-align: center;
+    vertical-align: middle;
+    padding: 12px;
+    border-top: 1px solid #dee2e6;
+  }
+
+  /* Highlight rows for "reviewed" if you like */
+  .reviewed-row {
+    background-color: #f0f0f0 !important;
+    opacity: 0.6;
+  }
+
+  /* Buttons */
+  .btn {
+    padding: 6px 14px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 5px;
+    margin: 0 2px;
+  }
+  .btn-download {
+    background-color: #007bff;
+    border-color: #007bff;
+    font-weight: 600;
+    transition: background-color 0.3s ease;
+  }
+  .btn-download:hover {
+    background-color: #0056b3;
+    border-color: #004998;
+  }
+  .btn-review {
+    min-width: 120px;
+  }
+  .btn-reviewed-yes {
+    background-color: #28a745 !important;
+    color: #fff;
+  }
+  .btn-reviewed-no {
+    background-color: #dc3545 !important;
+    color: #fff;
+  }
+  .btn-review[disabled],
+  .btn-review[disabled]:hover {
+    cursor: not-allowed !important;
+    color: #ffffff !important; /* Makes text red */
   }
   /* Modal Customization */
   .modal-content {
@@ -97,153 +153,95 @@
   .close:hover {
     color: #ffc107;
   }
-  /* Button sizing (make all buttons consistent) */
-  .btn,
-  .btn-group .btn {
-    padding: 6px 14px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    border-radius: 5px;
-  }
-  /* Download Button */
-  .btn-download {
-    background-color: #007bff;
-    border-color: #007bff;
-    font-weight: 600;
-    transition: background-color 0.3s ease;
-  }
-  .btn-download:hover {
-    background-color: #0056b3;
-    border-color: #004998;
-  }
-  /* Button styles */
-  .btn-review {
-    min-width: 120px;
-  }
-
-  /* Highlight reviewed decisions */
-  .btn-reviewed-yes {
-    background-color: #28a745 !important;
-    color: #fff;
-  }
-
-  .btn-reviewed-no {
-    background-color: #dc3545 !important;
-    color: #fff;
-  }
-
-  /* Button hover feedback */
-  .btn:hover:not(:disabled) {
-    opacity: 0.9;
-  }
-
-  .btn:disabled {
-    cursor: not-allowed;
-  }
-
-  /* Optional: Hover feedback */
-  .btn-group .btn:hover:not(:disabled) {
-    opacity: 0.9;
-  }
-  /* Dim row after review */
-  .dimmed {
-    opacity: 0.5;
-  }
-  /* Dimmed row if reviewed */
-  .reviewed-row {
-    opacity: 0.6;
-    background-color: #f0f0f0 !important;
-  }
-
 </style>
 
-<!-- Malpractice Section Start -->
 <section class="malpractice-section">
   <div class="container">
-    <div class="row">
-      <div class="col-md-12 text-center mb-4">
-        <h2 class="malpractice-heading">Malpractice Log</h2>
-      </div>
-    </div>
+    <h2 class="malpractice-heading">Malpractice Log</h2>
 
-    <div class="row justify-content-center">
-      <div class="col-lg-10">
-        <div class="table-container">
-          <table class="table table-striped">
-            <thead>
-              <tr>
-                <th scope="col">Sl. No</th>
-                <th scope="col">Date</th>
-                <th scope="col">Time</th>
-                <th scope="col">Malpractice</th>
-                <th scope="col">View</th>
-                <th scope="col">Download</th>
-                {% if is_admin %}
-                  <th scope="col">Review Malpractice</th>
-                {% endif %}
-              </tr>
-            </thead>
-            <tbody>
-              {% for i in result %}
-              <tr class="{% if is_admin and i.verified %}reviewed-row{% endif %}">
-                <td>{{ forloop.counter }}</td>
-                <td>{{ i.date }}</td>
-                <td>{{ i.time }}</td>
-                <td>{{ i.malpractice }}</td>
-            
-                <td>
-                  <button 
-                    type="button"
-                    class="btn btn-secondary"
-                    data-toggle="modal"
-                    data-target="#videoModal"
-                    onclick="playVideo('{{ i.proof }}')"
-                  >
-                    View
-                  </button>
-                </td>
-            
-                <td>
-                  <a href="/media/{{ i.proof }}" download class="btn btn-primary">
-                    Download
-                  </a>
-                </td>
-            
-                {% if is_admin %}
-                <td>
-                  <div class="btn-group" role="group">
-                    <button
-                      class="btn btn-success btn-review {% if i.verified and i.is_malpractice %}btn-reviewed-yes{% endif %}"
-                      onclick="reviewMalpractice(this, 'yes')"
-                      {% if i.verified %}disabled{% endif %}
-                    >
-                      Malpractice
-                    </button>
-                    <button
-                      class="btn btn-danger btn-review {% if i.verified and not i.is_malpractice %}btn-reviewed-no{% endif %}"
-                      onclick="reviewMalpractice(this, 'no')"
-                      {% if i.verified %}disabled{% endif %}
-                    >
-                      Not Malpractice
-                    </button>
-                  </div>
-                </td>
-                {% endif %}
-              </tr>
-              {% endfor %}
-            </tbody>
-            
-            
-            
-          </table>
-        </div>
-      </div>
+    <div class="table-container">
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th scope="col">Sl. No</th>
+            <th scope="col">Date</th>
+            <th scope="col">Time</th>
+            <th scope="col">Malpractice</th>
+            <th scope="col">Lecture Hall</th>
+            <th scope="col">Assigned Faculty</th>
+            <th scope="col">View</th>
+            <th scope="col">Download</th>
+            {% if is_admin %}
+              <th scope="col">Review Malpractice</th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for i in result %}
+          <tr class="{% if is_admin and i.verified %}reviewed-row{% endif %}">
+            <td>{{ forloop.counter }}</td>
+            <td>{{ i.date }}</td>
+            <td>{{ i.time }}</td>
+            <td>{{ i.malpractice }}</td>
+            <td>
+              {% if i.lecture_hall %}
+                {{ i.lecture_hall.building }} - {{ i.lecture_hall.hall_name }}
+              {% else %}
+                <span class="text-muted">N/A</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if i.lecture_hall and i.lecture_hall.assigned_teacher %}
+                {{ i.lecture_hall.assigned_teacher.get_full_name|default:i.lecture_hall.assigned_teacher.username }}
+              {% else %}
+                <span class="text-muted">Unassigned</span>
+              {% endif %}
+            </td>
+            <td>
+              <button
+                type="button"
+                class="btn btn-secondary"
+                data-toggle="modal"
+                data-target="#videoModal"
+                onclick="playVideo('{{ i.proof }}')"
+              >
+                View
+              </button>
+            </td>
+            <td>
+              <a href="/media/{{ i.proof }}" download class="btn btn-primary btn-download">
+                Download
+              </a>
+            </td>
+            {% if is_admin %}
+            <td>
+              <div class="btn-group" role="group">
+                <button
+                  class="btn btn-success btn-review {% if i.verified and i.is_malpractice %}btn-reviewed-yes{% endif %}"
+                  onclick="reviewMalpractice(this, 'yes')"
+                  {% if i.verified %}disabled{% endif %}
+                >
+                  Malpractice
+                </button>
+                <button
+                  class="btn btn-danger btn-review {% if i.verified and not i.is_malpractice %}btn-reviewed-no{% endif %}"
+                  onclick="reviewMalpractice(this, 'no')"
+                  {% if i.verified %}disabled{% endif %}
+                >
+                  Not Malpractice
+                </button>
+              </div>
+            </td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   </div>
 </section>
-<!-- Malpractice Section End -->
 
-<!-- Modal for Video (Bootstrap 4) -->
+<!-- Modal for Video -->
 <div class="modal fade" id="videoModal" tabindex="-1" role="dialog" aria-labelledby="videoModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
     <div class="modal-content">
@@ -272,16 +270,18 @@
 
     const mediaPath = `/media/${videoUrl}`;
 
-    // Reset previous <source> elements
+    // Clear any previous <source> elements
     videoPlayer.pause();
-    while(videoPlayer.firstChild) {
+    while (videoPlayer.firstChild) {
       videoPlayer.removeChild(videoPlayer.firstChild);
     }
 
+    // Create new source
     const source = document.createElement('source');
     source.src = mediaPath;
     source.type = 'video/mp4';
 
+    // Handle loading error
     source.onerror = () => {
       errorDisplay.textContent = 'Error: Video file not found or invalid format';
       errorDisplay.style.display = 'block';
@@ -289,6 +289,7 @@
 
     videoPlayer.appendChild(source);
 
+    // Attempt to play
     const playPromise = videoPlayer.play();
     if (playPromise !== undefined) {
       playPromise.catch(error => {
@@ -298,40 +299,38 @@
     }
   }
 
-  // NEW: Mark row as reviewed
+  // Mark row as reviewed
   function reviewMalpractice(button, decision) {
-  const row = button.closest('tr');
-  const proof = row.querySelector('a[download]').getAttribute('href').split('/').pop();
+    const row = button.closest('tr');
+    const proof = row.querySelector('a[download]').getAttribute('href').split('/').pop();
 
-  fetch(`/review_malpractice/`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRFToken': '{{ csrf_token }}'
-    },
-    body: JSON.stringify({ proof: proof, decision: decision })
-  })
-  .then(response => {
-    if (response.ok) {
-      // Highlight row as reviewed
-      row.classList.add('reviewed-row');
+    fetch(`/review_malpractice/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}'
+      },
+      body: JSON.stringify({ proof: proof, decision: decision })
+    })
+    .then(response => {
+      if (response.ok) {
+        // Mark row visually
+        row.classList.add('reviewed-row');
 
-      // Disable both buttons
-      const buttons = row.querySelectorAll('.btn-review');
-      buttons.forEach(btn => {
-        btn.disabled = true;
-        btn.classList.remove('btn-reviewed-yes', 'btn-reviewed-no');
-      });
+        // Disable both buttons
+        const buttons = row.querySelectorAll('.btn-review');
+        buttons.forEach(btn => {
+          btn.disabled = true;
+          btn.classList.remove('btn-reviewed-yes', 'btn-reviewed-no');
+        });
 
-      // Add highlight to clicked one
-      if (decision === 'yes') {
-        button.classList.add('btn-reviewed-yes');
-      } else {
-        button.classList.add('btn-reviewed-no');
+        // Highlight clicked button
+        if (decision === 'yes') {
+          button.classList.add('btn-reviewed-yes');
+        } else {
+          button.classList.add('btn-reviewed-no');
+        }
       }
-    }
-  });
-}
-
+    });
+  }
 </script>
-{% include 'footer.html' %}

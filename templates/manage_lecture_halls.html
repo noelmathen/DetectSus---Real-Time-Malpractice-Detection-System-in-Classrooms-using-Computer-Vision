@@ -1,0 +1,275 @@
+{% include "header.html" %}
+{% block content %}
+
+<style>
+  body {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  }
+  .manage-section {
+    min-height: 70vh;
+    padding: 40px 0;
+  }
+  .manage-heading {
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 2px;
+    margin-bottom: 2rem;
+    color: #333;
+    text-align: center;
+    position: relative;
+  }
+  .manage-heading::after {
+    content: "";
+    display: block;
+    width: 80px;
+    height: 3px;
+    background-color: #007bff;
+    margin: 10px auto 0;
+  }
+  /* Form Container */
+  .add-form {
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  }
+  .add-form label {
+    font-weight: 600;
+  }
+  .add-form .form-control {
+    border-radius: 5px;
+  }
+  .btn-add {
+    background-color: #007bff;
+    border: none;
+    color: #fff;
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+  }
+  .btn-add:hover {
+    background-color: #0056b3;
+  }
+  /* Table Container */
+  .table-container {
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  }
+  .table {
+    margin-bottom: 0;
+  }
+  .table th {
+    background-color: #f7f9fc;
+    font-weight: 600;
+  }
+  .table td,
+  .table th {
+    vertical-align: middle;
+  }
+  .table thead th {
+    border-bottom: 2px solid #dee2e6;
+  }
+  /* Button Styling in Table */
+  .btn-assign {
+    background-color: #28a745;
+    border: none;
+    color: #fff;
+    padding: 5px 10px;
+    font-size: 0.8rem;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+  }
+  .btn-assign:hover {
+    background-color: #218838;
+  }
+  /* Dropdown/Select Styling */
+  .teacher-select {
+    border-radius: 5px;
+    padding: 5px;
+    font-size: 0.9rem;
+  }
+  .filter-bar label {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  .filter-bar .form-control {
+    border-radius: 6px;
+  }
+
+  .filter-bar .btn {
+    height: 38px;
+  }
+</style>
+
+<section class="manage-section">
+  <div class="container">
+    <h2 class="manage-heading">Manage Lecture Halls</h2>
+    
+    
+    <!-- Add Lecture Hall Form -->
+    <div class="add-form">
+      <form method="post" class="needs-validation" novalidate>
+        {% csrf_token %}
+        <div class="form-row align-items-center">
+          <div class="col-md-4 mb-3">
+            <label for="hallName">Lecture Hall Name</label>
+            <input type="text" name="hall_name" class="form-control" id="hallName" placeholder="e.g. LH1" required>
+            <div class="invalid-feedback">
+              Please provide a lecture hall name.
+            </div>
+          </div>
+          <div class="col-md-4 mb-3">
+            <label for="buildingSelect">Building</label>
+            <select name="building" class="form-control" id="buildingSelect" required>
+              <option value="">Select Building</option>
+              <option value="Main Building">Main Building</option>
+              <option value="KE Block">KE Block</option>
+            </select>
+            <div class="invalid-feedback">
+              Please select a building.
+            </div>
+          </div>
+          <div class="col-md-4 mb-3 align-self-end">
+            <button type="submit" name="add_hall" class="btn btn-add btn-block">
+              <i class="fas fa-plus-circle"></i> Add Lecture Hall
+            </button>
+          </div>
+        </div>
+      </form>
+      {% if error_message %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+          <strong>Error!</strong> {{ error_message }}
+          <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+      {% endif %}
+    </div>
+    
+<br><br>
+<!-- FILTER BAR -->
+<div class="filter-bar mb-4">
+  <form method="get">
+    <div class="form-row">
+      <!-- Search -->
+      <div class="form-group col-md-4">
+        <label for="q">Search Lecture Hall:</label>
+        <input 
+          type="text" 
+          name="q" 
+          id="q" 
+          class="form-control" 
+          placeholder="Enter LH name (e.g., LH1)" 
+          value="{{ query }}">
+      </div>
+
+      <!-- Filter by Building -->
+      <div class="form-group col-md-4">
+        <label for="building">Filter by Building:</label>
+        <select name="building" class="form-control" id="building">
+          <option value="">All Buildings</option>
+          {% for b in buildings %}
+            <option value="{{ b }}" {% if building_filter == b %}selected{% endif %}>{{ b }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Filter by Assignment -->
+      <div class="form-group col-md-3">
+        <label for="assigned">Filter by Assignment:</label>
+        <select name="assigned" class="form-control" id="assigned">
+          <option value="">All</option>
+          <option value="assigned" {% if assignment_filter == 'assigned' %}selected{% endif %}>Assigned</option>
+          <option value="unassigned" {% if assignment_filter == 'unassigned' %}selected{% endif %}>Unassigned</option>
+        </select>
+      </div>
+
+      <!-- Apply Button -->
+      <div class="form-group col-md-1 d-flex align-items-end">
+        <button type="submit" class="btn btn-primary w-100">
+          <i class="fas fa-filter"></i>
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+
+
+
+    <!-- Lecture Hall & Teacher Mapping Table -->
+    <div class="table-container">
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>Lecture Hall</th>
+            <th>Building</th>
+            <th>Assigned Teacher</th>
+            <th>Map New Teacher</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for hall in lecture_halls %}
+          <tr>
+            <td>{{ hall.hall_name }}</td>
+            <td>{{ hall.building }}</td>
+            <td>
+              {% if hall.assigned_teacher %}
+                {{ hall.assigned_teacher.get_full_name|default:hall.assigned_teacher.username }}
+              {% else %}
+                <span class="text-muted">Not Assigned</span>
+              {% endif %}
+            </td>
+            <td>
+              <form method="post" class="form-inline">
+                {% csrf_token %}
+                <input type="hidden" name="hall_id" value="{{ hall.id }}">
+                <div class="input-group">
+                  <select name="teacher_id" class="form-control teacher-select" required>
+                    <option value="">Select Teacher</option>
+                    {% for teacher in teachers %}
+                      <option value="{{ teacher.id }}">{{ teacher.get_full_name|default:teacher.username }}</option>
+                    {% endfor %}
+                  </select>
+                  <div class="input-group-append">
+                    <button class="btn btn-assign" type="submit" name="map_teacher">
+                      <i class="fas fa-user-plus"></i> Assign
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    
+  </div>
+</section>
+
+<!-- Optional JavaScript for Form Validation -->
+<script>
+  // Disable form submissions if there are invalid fields
+  (function() {
+    'use strict';
+    window.addEventListener('load', function() {
+      var forms = document.getElementsByClassName('needs-validation');
+      Array.prototype.filter.call(forms, function(form) {
+        form.addEventListener('submit', function(event) {
+          if (form.checkValidity() === false) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+          form.classList.add('was-validated');
+        }, false);
+      });
+    }, false);
+  })();
+</script>
+{% endblock %}

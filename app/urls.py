@@ -12,12 +12,14 @@ urlpatterns = [
     path('',views.index),
     path('index', views.index, name='index'),
     path('register/teacher/', views.teacher_register, name='teacher_register'),
-    path('login/',views.login, name='login'),
     path('login/addlogin', views.addlogin, name='addlogin'),
+    path('login/',views.login, name='login'),
     path('profile/', views.profile, name='profile'),
     path('logout/',views.logout, name='logout'),
     path('malpractice_log/',views.malpractice_log, name='malpractice_log'),
     path('review_malpractice/', views.review_malpractice, name='review_malpractice'),
+    path('manage-lecture-halls/', views.manage_lecture_halls, name='manage_lecture_halls'),
+    path('view_teachers/', views.view_teachers, name='view_teachers'),
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 if settings.DEBUG:
