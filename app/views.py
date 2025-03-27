@@ -11,7 +11,8 @@ from django.contrib.auth.models import User
 from .models import TeacherProfile
 import json
 from django.db.models import Q
-
+from django.core.mail import send_mail
+from django.conf import settings
 
 
 # Global stop event
@@ -125,20 +126,38 @@ def malpractice_log(request):
 @login_required
 @user_passes_test(is_admin)
 def review_malpractice(request):
-    if request.method == 'POST' and request.user.is_superuser:
-        data = json.loads(request.body)
-        proof_filename = data.get('proof')
-        decision = data.get('decision')
+    data = json.loads(request.body)
+    proof = data.get('proof')
+    decision = data.get('decision')
 
-        try:
-            log = MalpraticeDetection.objects.get(proof=proof_filename)
-            log.verified = True
-            log.is_malpractice = True if decision == 'yes' else False
-            log.save()
-            return JsonResponse({'success': True})
-        except MalpraticeDetection.DoesNotExist:
-            return JsonResponse({'success': False, 'error': 'Log not found'})
-    return JsonResponse({'success': False, 'error': 'Unauthorized or bad request'})
+    try:
+        log = MalpraticeDetection.objects.get(proof=proof)
+        log.verified = True
+        log.is_malpractice = (decision == 'yes')
+        log.save()
+
+        # ✅ Send Email to Assigned Teacher if decision is 'yes'
+        if log.is_malpractice and log.lecture_hall and log.lecture_hall.assigned_teacher:
+            teacher = log.lecture_hall.assigned_teacher
+            subject = 'Malpractice Alert: New Case Reviewed'
+            message = (
+                f"Dear {teacher.get_full_name() or teacher.username},\n\n"
+                f"A malpractice has been detected and approved by the admin.\n\n"
+                f"Details:\n"
+                f"- 📅 Date: {log.date}\n"
+                f"- ⏰ Time: {log.time}\n"
+                f"- 🎯 Type: {log.malpractice}\n"
+                f"- 🏫 Lecture Hall: {log.lecture_hall.building} - {log.lecture_hall.hall_name}\n\n"
+                f"You can view the recorded video proof from your DetectSus portal.\n\n"
+                f"Best regards,\n"
+                f"DetectSus Team"
+            )
+            send_mail(subject, message, settings.EMAIL_HOST_USER, [teacher.email], fail_silently=False)
+
+        return JsonResponse({"status": "success"})
+
+    except MalpraticeDetection.DoesNotExist:
+        return JsonResponse({"error": "Log not found"}, status=404)
 
 
 
