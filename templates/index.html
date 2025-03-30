@@ -1,182 +1,266 @@
-<!-- index.html -->
 {% block content %}
 {% include 'header.html' %}
 {% load static %}
 
-<!-- Custom CSS (Optional) -->
-<!-- You can move these styles into a separate CSS file if preferred -->
+<!-- Include AOS CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css">
+
+<!-- Custom CSS -->
 <style>
-  /* Example custom styles for a more refined look */
+  /* Hero Section */
+  .navbar {
+    position: relative;
+    z-index: 9999;
+    background-color: #fff;
+    /* Make sure the navbar has a solid background */
+  }
+
   .hero-overlay {
     background: rgba(0, 0, 0, 0.45);
   }
+
   .hero-title {
     font-size: 3rem;
     font-weight: 700;
-    text-shadow: 2px 2px 3px rgba(0,0,0,0.4);
+    text-shadow: 2px 2px 3px rgba(0, 0, 0, 0.4);
   }
+
   .hero-subtitle {
     font-size: 1.5rem;
     font-weight: 400;
     margin-bottom: 2rem;
-    text-shadow: 2px 2px 3px rgba(0,0,0,0.4);
+    text-shadow: 2px 2px 3px rgba(0, 0, 0, 0.4);
   }
+
+  /* Feature Boxes */
   .feature-icon {
     font-size: 40px;
     color: #0056b3;
     margin-bottom: 15px;
   }
+
   .feature-box {
     border: 1px solid #f3f3f3;
     padding: 25px;
     margin: 15px 0;
     border-radius: 5px;
     transition: box-shadow 0.3s ease;
+    background: #fff;
   }
+
   .feature-box:hover {
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
   }
 </style>
 
-<!-- Carousel/ Hero Section Start -->
-<div class="container-fluid p-0">
-  <div id="header-carousel" class="carousel slide" data-ride="carousel">
-
-    <ol class="carousel-indicators">
-      <li data-target="#header-carousel" data-slide-to="0" class="active"></li>
-      <li data-target="#header-carousel" data-slide-to="1"></li>
-    </ol>
-
-    <div class="carousel-inner">
-
-      <!-- First Slide -->
-      <div class="carousel-item active">
-        <img class="w-100" src="{% static 'img/background.png' %}" alt="DetectSus Hero Image">
-        <div class="carousel-caption d-flex flex-column align-items-center justify-content-center hero-overlay">
-          <div class="p-3" style="max-width: 900px;">
-            <h1 class="text-white text-uppercase hero-title mb-3">DetectSus</h1>
-            <h5 class="text-white hero-subtitle mb-4">
-              Real-time Malpractice Detection System Using Computer Vision
-            </h5>
-            <a href="#learnmore" class="btn btn-primary py-md-3 px-md-5 mt-2">Learn More</a>
+<main>
+  <!-- Carousel / Hero Section Start -->
+  <div class="container-fluid p-0">
+    <div id="header-carousel" class="carousel slide" data-ride="carousel" data-interval="5000" data-pause="hover">
+      <!-- Indicators -->
+      <ol class="carousel-indicators">
+        <li data-target="#header-carousel" data-slide-to="0" class="active"></li>
+        <li data-target="#header-carousel" data-slide-to="1"></li>
+        <li data-target="#header-carousel" data-slide-to="2"></li>
+        <li data-target="#header-carousel" data-slide-to="3"></li>
+        <li data-target="#header-carousel" data-slide-to="4"></li>
+        <li data-target="#header-carousel" data-slide-to="5"></li>
+      </ol>
+      <!-- Slides -->
+      <div class="carousel-inner">
+        <!-- Slide 1 -->
+        <div class="carousel-item active">
+          <img class="d-block w-100" src="{% static 'img/background.png' %}" alt="DetectSus Hero Image">
+          <div class="carousel-caption d-flex flex-column align-items-center justify-content-center hero-overlay">
+            <div class="p-3" style="max-width: 900px;">
+              <h1 class="text-white text-uppercase hero-title mb-3">DetectSus</h1>
+              <h5 class="text-white hero-subtitle mb-4">
+                Real-time Malpractice Detection System Using Computer Vision
+              </h5>
+              <a href="#learnmore" class="btn btn-primary py-md-3 px-md-5 mt-2">Learn More</a>
+            </div>
+          </div>
+        </div>
+        <!-- Slide 2 -->
+        <div class="carousel-item">
+          <img class="d-block w-100" src="{% static 'img/indiaaifellowship.jpeg' %}" alt="Exam Integrity">
+          <div class="carousel-caption d-flex flex-column align-items-center justify-content-center hero-overlay">
+            <div class="p-3" style="max-width: 800px;">
+              <h2 class="text-white mb-4">Ensuring Exam Integrity</h2>
+              <p class="text-white lead mb-4">
+                Harness the power of AI to safeguard academic honesty and identify suspicious activities instantly.
+              </p>
+              <a href="#features" class="btn btn-light py-md-2 px-md-4">Key Features</a>
+            </div>
+          </div>
+        </div>
+        <!-- Slide 3 -->
+        <div class="carousel-item">
+          <img class="d-block w-100" src="{% static 'img/saintgits1.jpeg' %}" alt="Advanced Analytics">
+          <div class="carousel-caption d-flex flex-column align-items-center justify-content-center hero-overlay">
+            <div class="p-3" style="max-width: 800px;">
+              <h2 class="text-white mb-4">Advanced Analysis</h2>
+              <p class="text-white lead mb-4">
+                Detailed analysis and evaluation using keypoint esimation and object detection.
+              </p>
+              <a href="#features" class="btn btn-light py-md-2 px-md-4">See More</a>
+            </div>
+          </div>
+        </div>
+        <!-- Slide 4 -->
+        <div class="carousel-item">
+          <img class="d-block w-100" src="{% static 'img/saintgits2.jpeg' %}" alt="Robust Security">
+          <div class="carousel-caption d-flex flex-column align-items-center justify-content-center hero-overlay">
+            <div class="p-3" style="max-width: 800px;">
+              <h2 class="text-white mb-4">Robust Security</h2>
+              <p class="text-white lead mb-4">
+                A secure and reliable system ensuring the integrity of every exam.
+              </p>
+              <a href="#features" class="btn btn-light py-md-2 px-md-4">Learn More</a>
+            </div>
+          </div>
+        </div>
+        <!-- Slide 5 -->
+        <div class="carousel-item">
+          <img class="d-block w-100" src="{% static 'img/saintgits3.jpeg' %}" alt="Real-Time Alerts">
+          <div class="carousel-caption d-flex flex-column align-items-center justify-content-center hero-overlay">
+            <div class="p-3" style="max-width: 800px;">
+              <h2 class="text-white mb-4">Real-Time Alerts</h2>
+              <p class="text-white lead mb-4">
+                Instant email and sms notifications to invigilators for immediate action.
+              </p>
+              <a href="#features" class="btn btn-light py-md-2 px-md-4">Get Alerted</a>
+            </div>
+          </div>
+        </div>
+        <!-- Slide 6 -->
+        <div class="carousel-item">
+          <img class="d-block w-100" src="{% static 'img/about_detectsus.png' %}" alt="AI Powered">
+          <div class="carousel-caption d-flex flex-column align-items-center justify-content-center hero-overlay">
+            <div class="p-3" style="max-width: 800px;">
+              <h2 class="text-white mb-4">AI Powered</h2>
+              <p class="text-white lead mb-4">
+                Leveraging advanced AI for precise detection and analytics.
+              </p>
+              <a href="#features" class="btn btn-light py-md-2 px-md-4">Discover More</a>
+            </div>
+          </div>
+        </div>
+        <!-- Slide 7 -->
+        <div class="carousel-item">
+          <img class="d-block w-100" src="{% static 'img/cakecutting.jpg' %}" alt="AI Powered">
+          <div class="carousel-caption d-flex flex-column align-items-center justify-content-center hero-overlay">
+            <div class="p-3" style="max-width: 800px;">
+              <h2 class="text-white mb-4">Multiple Action Identification</h2>
+              <p class="text-white lead mb-4">
+                Identifies multiple malpractice instances like turning back, passing object, mobile phone usage,
+                leaning, handd raise and so on...
+              </p>
+              <a href="#features" class="btn btn-light py-md-2 px-md-4">Discover More</a>
+            </div>
           </div>
         </div>
       </div>
+      <!-- Carousel Controls -->
+      <a class="carousel-control-prev" href="#header-carousel" role="button" data-slide="prev">
+        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+      </a>
+      <a class="carousel-control-next" href="#header-carousel" role="button" data-slide="next">
+        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+      </a>
+    </div>
+  </div>
+  <!-- Carousel/Hero Section End -->
 
-      <!-- Second Slide -->
-      <div class="carousel-item">
-        <img class="w-100" src="{% static 'img/background2.jpg' %}" alt="Alternate Slide">
-        <div class="carousel-caption d-flex flex-column align-items-center justify-content-center hero-overlay">
-          <div class="p-3" style="max-width: 800px;">
-            <h2 class="text-white mb-4">Ensuring Exam Integrity</h2>
-            <p class="text-white lead mb-4">
-              Harness the power of AI to safeguard academic honesty and identify suspicious activities instantly.
+  <!-- About / Learn More Section Start -->
+  <section id="learnmore" class="py-5" data-aos="fade-up">
+    <div class="container">
+      <div class="row align-items-center">
+        <div class="col-lg-6 mb-4 mb-lg-0" data-aos="fade-right">
+          <img src="{% static 'img/about_detectsus.png' %}" alt="About DetectSus" class="img-fluid rounded shadow">
+        </div>
+        <div class="col-lg-6" data-aos="fade-left">
+          <h2 class="mb-4">What is DetectSus?</h2>
+          <p class="lead">
+            DetectSus is a real-time malpractice detection system that leverages advanced computer vision and AI to
+            identify suspicious activities in classrooms. It helps safeguard exam integrity by monitoring unauthorized
+            materials and unusual behaviors.
+          </p>
+          <ul>
+            <li>Object detection for identifying phones, notes, and more</li>
+            <li>Pose estimation to capture suspicious body language</li>
+            <li>Immediate alerts for rapid intervention</li>
+          </ul>
+          <a href="#features" class="btn btn-primary mt-2">View Features</a>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- About / Learn More Section End -->
+
+  <!-- Features Section Start -->
+  <section id="features" class="py-5 bg-light" data-aos="fade-up">
+    <div class="container">
+      <h2 class="mb-5 text-center">Key Features</h2>
+      <div class="row">
+        <div class="col-md-4" data-aos="zoom-in" data-aos-delay="100">
+          <div class="feature-box text-center">
+            <div class="feature-icon">
+              <i class="fas fa-video"></i>
+            </div>
+            <h4 class="mb-3">Real-Time Monitoring</h4>
+            <p class="mb-0">
+              Continuously scan exam rooms for suspicious activities using AI-powered video analysis.
             </p>
-            <a href="#features" class="btn btn-light py-md-2 px-md-4">Key Features</a>
           </div>
         </div>
-      </div>
-
-    </div>
-
-    <!-- Carousel Controls -->
-    <a class="carousel-control-prev" href="#header-carousel" role="button" data-slide="prev">
-      <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-    </a>
-    <a class="carousel-control-next" href="#header-carousel" role="button" data-slide="next">
-      <span class="carousel-control-next-icon" aria-hidden="true"></span>
-    </a>
-
-  </div>
-</div>
-<!-- Carousel/ Hero Section End -->
-
-
-<!-- About / Learn More Section Start -->
-<section id="learnmore" class="py-5">
-  <div class="container">
-    <div class="row align-items-center">
-      <div class="col-lg-6 mb-4 mb-lg-0">
-        <img src="{% static 'img/about_detectsus.png' %}" alt="About DetectSus" class="img-fluid rounded shadow">
-      </div>
-      <div class="col-lg-6">
-        <h2 class="mb-4">What is DetectSus?</h2>
-        <p class="lead">
-          DetectSus is a real-time malpractice detection system designed to identify suspicious activities in classrooms 
-          using advanced computer vision and AI. Our solution helps educational institutions strengthen exam integrity 
-          by monitoring for unauthorized materials, unnatural gestures, and other cheating behaviors.
-        </p>
-        <ul>
-          <li>Object detection for identifying phones, notes, and more</li>
-          <li>Pose estimation to capture suspicious body language</li>
-          <li>Immediate alerts for quick intervention</li>
-        </ul>
-        <a href="#features" class="btn btn-primary mt-2">View Features</a>
-      </div>
-    </div>
-  </div>
-</section>
-<!-- About / Learn More Section End -->
-
-
-<!-- Features Section Start -->
-<section id="features" class="py-5 bg-light">
-  <div class="container">
-    <h2 class="mb-5 text-center">Key Features</h2>
-
-    <div class="row">
-      <div class="col-md-4">
-        <div class="feature-box text-center">
-          <div class="feature-icon">
-            <i class="fas fa-video"></i>
+        <div class="col-md-4" data-aos="zoom-in" data-aos-delay="200">
+          <div class="feature-box text-center">
+            <div class="feature-icon">
+              <i class="fas fa-user-secret"></i>
+            </div>
+            <h4 class="mb-3">Immediate Alerts</h4>
+            <p class="mb-0">
+              Instantly flag unauthorized items or unusual behaviors and notify proctors.
+            </p>
           </div>
-          <h4 class="mb-3">Real-Time Monitoring</h4>
-          <p class="mb-0">
-            Continuously scan exam rooms for suspicious activities using AI-powered video analysis and object detection.
-          </p>
         </div>
-      </div>
-
-      <div class="col-md-4">
-        <div class="feature-box text-center">
-          <div class="feature-icon">
-            <i class="fas fa-user-secret"></i>
+        <div class="col-md-4" data-aos="zoom-in" data-aos-delay="300">
+          <div class="feature-box text-center">
+            <div class="feature-icon">
+              <i class="fas fa-brain"></i>
+            </div>
+            <h4 class="mb-3">Machine Learning &amp; Analytics</h4>
+            <p class="mb-0">
+              Leverage deep learning for accurate classification and actionable insights.
+            </p>
           </div>
-          <h4 class="mb-3">Immediate Alerts</h4>
-          <p class="mb-0">
-            Instantly flag unauthorized items or unusual gestures and notify proctors, ensuring rapid response to potential breaches.
-          </p>
-        </div>
-      </div>
-
-      <div class="col-md-4">
-        <div class="feature-box text-center">
-          <div class="feature-icon">
-            <i class="fas fa-brain"></i>
-          </div>
-          <h4 class="mb-3">Machine Learning &amp; Analytics</h4>
-          <p class="mb-0">
-            Leverage deep learning for accurate classification and analytics, helping institutions refine exam procedures over time.
-          </p>
         </div>
       </div>
     </div>
-  </div>
-</section>
-<!-- Features Section End -->
+  </section>
+  <!-- Features Section End -->
 
+  <!-- Call to Action Section Start -->
+  <section class="py-5 text-white" style="background-color: #343a40;" data-aos="fade-up">
+    <div class="container text-center">
+      <h2 class="mb-4">Want to Learn More?</h2>
+      <p class="mb-4">
+        Contact us to schedule a demo or discuss how DetectSus can enhance your exam security.
+      </p>
+      <a href="#" class="btn btn-primary btn-lg">Contact Us</a>
+    </div>
+  </section>
+  <!-- Call to Action Section End -->
+</main>
 
-<!-- Call to Action Start -->
-<section class="py-5 text-white" style="background-color: #343a40;">
-  <div class="container text-center">
-    <h2 class="mb-4">Want to Learn More?</h2>
-    <p class="mb-4">
-      Contact us to schedule a demo or discuss how DetectSus can elevate your institution's exam security.
-    </p>
-    <a href="#" class="btn btn-primary btn-lg">Contact Us</a>
-  </div>
-</section>
-<!-- Call to Action End -->
-
+<!-- Include AOS JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+<script>
+  AOS.init({
+    duration: 1000,
+    once: true,
+  });
+</script>
 {% include 'footer.html' %}
 {% endblock %}

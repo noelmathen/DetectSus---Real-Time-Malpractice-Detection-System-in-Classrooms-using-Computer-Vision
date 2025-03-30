@@ -1,59 +1,67 @@
-<!-- register.html -->
 {% include 'header.html' %}
+{% load static %}
 
-<!-- Custom Styles (You can move these into a separate CSS file) -->
+<!-- Custom Styles (Consider moving these into a separate CSS file) -->
 <style>
-  /* Body gradient background */
   body {
     background: linear-gradient(135deg, #edf2f7 0%, #cfd9df 100%);
     font-family: 'Poppins', sans-serif;
   }
 
-  /* Centered container styling */
+  /* Center container styling */
   .register-container {
     max-width: 700px;
-    margin-top: 4rem;
-    margin-bottom: 4rem;
+    margin: 4rem auto;
+    padding: 0 1rem;
   }
 
   /* Card styling for the registration form */
   .register-card {
-    background-color: #fff;
+    background: #ffffff;
     border: none;
     border-radius: 12px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    padding: 30px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    padding: 40px 30px;
   }
 
-  /* Header text style */
+  /* Title styling */
   .register-title {
-    font-size: 1.75rem;
+    font-size: 2rem;
     font-weight: 600;
     color: #333;
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    letter-spacing: 0.5px;
   }
 
-  /* Labels and input fields styling */
+  /* Form elements styling */
   .form-group label {
     font-weight: 500;
+    color: #555;
   }
+
   .form-control {
     border-radius: 6px;
+    border: 1px solid #ced4da;
+    transition: all 0.3s ease;
   }
+
+  .form-control:focus {
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+    border-color: #007bff;
+  }
+
   .form-control-file {
     cursor: pointer;
     border-radius: 6px;
   }
-  .form-control:focus {
-    box-shadow: none;
-    border-color: #007bff;
+
+  /* Input group styling */
+  .input-group-text {
+    background-color: #f8f9fa;
+    border-right: 1px solid #ced4da;
   }
 
-  /* Input group for icons */
-  .input-group-text {
-    background-color: #fff;
-    border-right: none;
-  }
   .input-group .form-control {
     border-left: none;
   }
@@ -64,76 +72,91 @@
     border-color: #007bff;
     font-weight: 600;
     width: 100%;
+    padding: 12px;
+    border-radius: 6px;
     transition: background-color 0.3s ease;
   }
+
   .btn-submit:hover {
     background-color: #0056b3;
     border-color: #004992;
   }
 
-  /* Media query for small screens */
+  /* Additional aesthetic tweaks */
+  .form-text {
+    font-size: 0.9rem;
+    color: #777;
+  }
+
   @media (max-width: 576px) {
     .register-container {
       margin-top: 2rem;
       margin-bottom: 2rem;
-      padding: 1rem;
+      padding: 0 1rem;
     }
+  }
+
+  .topbar,
+  .navbar {
+    font-family: 'Open Sans', sans-serif !important;
+    /* You can add other header-specific rules if needed, e.g.: */
+    background-color: inherit !important;
+    color: inherit !important;
+  }
+
+  /* Optionally, scope page-specific styles so they do not affect the header */
+  .main-content {
+    /* Page-specific styling (e.g., for login or registration content) */
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(135deg, #edf2f7 0%, #cfd9df 100%);
   }
 </style>
 
 <!-- Registration Section Start -->
 <div class="container register-container">
-  <div class="row">
-    <div class="col-12 text-center mb-4">
-      <h2 class="register-title">Teacher Registration</h2>
-    </div>
-  </div>
-
-  <div class="row justify-content-center">
-    <div class="col-md-12">
-      <div class="register-card">
-        <form action="{% url 'teacher_register' %}" method="POST" enctype="multipart/form-data">
-          {% csrf_token %}
-
-          <div class="form-group">
-            <label for="first_name">First Name:</label>
-            <input type="text" name="first_name" class="form-control" required>
-          </div>
-
-          <div class="form-group">
-            <label for="last_name">Last Name:</label>
-            <input type="text" name="last_name" class="form-control" required>
-          </div>
-
-          <div class="form-group">
-            <label for="email">Email ID:</label>
-            <input type="email" name="email" class="form-control" required>
-          </div>
-
-          <div class="form-group">
-            <label for="username">Username:</label>
-            <input type="text" name="username" class="form-control" required>
-          </div>
-
-          <div class="form-group">
-            <label for="password">Password:</label>
-            <input type="password" name="password" class="form-control" required>
-          </div>
-
-          <div class="form-group">
-            <label for="phone">Phone Number:</label>
-            <input type="text" name="phone" class="form-control" required>
-          </div>
-
-          <div class="form-group">
-            <label for="profile_picture">Profile Picture:</label>
-            <input type="file" name="profile_picture" class="form-control-file">
-          </div>
-
-          <button type="submit" class="btn btn-submit mt-3">Register</button>
-        </form>
+  <div class="card register-card">
+    <h2 class="register-title">Teacher Registration</h2>
+    <form action="{% url 'teacher_register' %}" method="POST" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="form-row">
+        <div class="form-group col-md-6">
+          <label for="first_name">First Name</label>
+          <input type="text" name="first_name" class="form-control" id="first_name" placeholder="John" required>
+        </div>
+        <div class="form-group col-md-6">
+          <label for="last_name">Last Name</label>
+          <input type="text" name="last_name" class="form-control" id="last_name" placeholder="Doe" required>
+        </div>
       </div>
-    </div>
+
+      <div class="form-group">
+        <label for="email">Email ID</label>
+        <input type="email" name="email" class="form-control" id="email" placeholder="john.doe@example.com" required>
+      </div>
+
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" name="username" class="form-control" id="username" placeholder="Enter username" required>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" name="password" class="form-control" id="password" placeholder="Enter password" required>
+      </div>
+
+      <div class="form-group">
+        <label for="phone">Phone Number</label>
+        <input type="text" name="phone" class="form-control" id="phone" placeholder="+1 123 456 7890" required>
+      </div>
+
+      <div class="form-group">
+        <label for="profile_picture">Profile Picture</label>
+        <input type="file" name="profile_picture" class="form-control-file" id="profile_picture">
+        <small class="form-text text-muted">Optional. Upload a profile image.</small>
+      </div>
+
+      <button type="submit" class="btn btn-submit mt-4">Register</button>
+    </form>
   </div>
 </div>
 <!-- Registration Section End -->

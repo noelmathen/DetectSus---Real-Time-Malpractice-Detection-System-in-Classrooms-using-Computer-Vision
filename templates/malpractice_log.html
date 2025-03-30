@@ -1,16 +1,13 @@
 {% include 'header.html' %}
 
 <!-- jQuery, then Popper.js, then Bootstrap JS (v4.x) -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
 <!-- Ding Sound (Only plays when there is an "alert" in context) -->
 <audio id="dingSound" src="https://www.fesliyanstudios.com/play-mp3/4386" preload="auto"></audio>
 {% if alert %}
 <script>
   // As soon as the DOM is ready
-  document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('DOMContentLoaded', function () {
     const sound = document.getElementById("dingSound");
     // Attempt to play audio
     sound.play()
@@ -39,7 +36,8 @@
 
   /* Spacing after header */
   .malpractice-section {
-    padding: 60px 0 40px; /* Extra top padding so content isn't hidden behind nav */
+    padding: 60px 0 40px;
+    /* Extra top padding so content isn't hidden behind nav */
     min-height: 70vh;
   }
 
@@ -53,6 +51,7 @@
     position: relative;
     text-align: center;
   }
+
   .malpractice-heading::after {
     content: "";
     display: block;
@@ -67,7 +66,7 @@
     background: #fff;
     border-radius: 8px;
     padding: 20px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
   }
 
   /* Table Styling */
@@ -107,49 +106,61 @@
     border-radius: 5px;
     margin: 0 2px;
   }
+
   .btn-download {
     background-color: #007bff;
     border-color: #007bff;
     font-weight: 600;
     transition: background-color 0.3s ease;
   }
+
   .btn-download:hover {
     background-color: #0056b3;
     border-color: #004998;
   }
+
   .btn-review {
     min-width: 120px;
   }
+
   .btn-reviewed-yes {
     background-color: #28a745 !important;
     color: #fff;
   }
+
   .btn-reviewed-no {
     background-color: #dc3545 !important;
     color: #fff;
   }
+
   .btn-review[disabled],
   .btn-review[disabled]:hover {
     cursor: not-allowed !important;
-    color: #ffffff !important; /* Makes text red */
+    color: #ffffff !important;
+    /* Makes text red */
   }
+
   /* Modal Customization */
   .modal-content {
     border-radius: 8px;
   }
+
   .modal-header {
     background: #007bff;
     color: #fff;
     border-bottom: none;
     border-radius: 8px 8px 0 0;
   }
+
   .modal-header .modal-title {
     font-weight: 600;
   }
+
   .close {
     color: #fff;
     opacity: 1;
   }
+
   .close:hover {
     color: #ffc107;
   }
@@ -172,7 +183,7 @@
             <th scope="col">View</th>
             <th scope="col">Download</th>
             {% if is_admin %}
-              <th scope="col">Review Malpractice</th>
+            <th scope="col">Review Malpractice</th>
             {% endif %}
           </tr>
         </thead>
@@ -185,26 +196,21 @@
             <td>{{ i.malpractice }}</td>
             <td>
               {% if i.lecture_hall %}
-                {{ i.lecture_hall.building }} - {{ i.lecture_hall.hall_name }}
+              {{ i.lecture_hall.building }} - {{ i.lecture_hall.hall_name }}
               {% else %}
-                <span class="text-muted">N/A</span>
+              <span class="text-muted">N/A</span>
               {% endif %}
             </td>
             <td>
               {% if i.lecture_hall and i.lecture_hall.assigned_teacher %}
-                {{ i.lecture_hall.assigned_teacher.get_full_name|default:i.lecture_hall.assigned_teacher.username }}
+              {{ i.lecture_hall.assigned_teacher.get_full_name|default:i.lecture_hall.assigned_teacher.username }}
               {% else %}
-                <span class="text-muted">Unassigned</span>
+              <span class="text-muted">Unassigned</span>
               {% endif %}
             </td>
             <td>
-              <button
-                type="button"
-                class="btn btn-secondary"
-                data-toggle="modal"
-                data-target="#videoModal"
-                onclick="playVideo('{{ i.proof }}')"
-              >
+              <button type="button" class="btn btn-secondary" data-toggle="modal" data-target="#videoModal"
+                onclick="playVideo('{{ i.proof }}')">
                 View
               </button>
             </td>
@@ -218,16 +224,12 @@
               <div class="btn-group" role="group">
                 <button
                   class="btn btn-success btn-review {% if i.verified and i.is_malpractice %}btn-reviewed-yes{% endif %}"
-                  onclick="reviewMalpractice(this, 'yes')"
-                  {% if i.verified %}disabled{% endif %}
-                >
+                  onclick="reviewMalpractice(this, 'yes')" {% if i.verified %}disabled{% endif %}>
                   Malpractice
                 </button>
                 <button
                   class="btn btn-danger btn-review {% if i.verified and not i.is_malpractice %}btn-reviewed-no{% endif %}"
-                  onclick="reviewMalpractice(this, 'no')"
-                  {% if i.verified %}disabled{% endif %}
-                >
+                  onclick="reviewMalpractice(this, 'no')" {% if i.verified %}disabled{% endif %}>
                   Not Malpractice
                 </button>
               </div>
@@ -242,7 +244,8 @@
 </section>
 
 <!-- Modal for Video -->
-<div class="modal fade" id="videoModal" tabindex="-1" role="dialog" aria-labelledby="videoModalLabel" aria-hidden="true">
+<div class="modal fade" id="videoModal" tabindex="-1" role="dialog" aria-labelledby="videoModalLabel"
+  aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
     <div class="modal-content">
       <div class="modal-header">
@@ -312,25 +315,25 @@
       },
       body: JSON.stringify({ proof: proof, decision: decision })
     })
-    .then(response => {
-      if (response.ok) {
-        // Mark row visually
-        row.classList.add('reviewed-row');
+      .then(response => {
+        if (response.ok) {
+          // Mark row visually
+          row.classList.add('reviewed-row');
 
-        // Disable both buttons
-        const buttons = row.querySelectorAll('.btn-review');
-        buttons.forEach(btn => {
-          btn.disabled = true;
-          btn.classList.remove('btn-reviewed-yes', 'btn-reviewed-no');
-        });
+          // Disable both buttons
+          const buttons = row.querySelectorAll('.btn-review');
+          buttons.forEach(btn => {
+            btn.disabled = true;
+            btn.classList.remove('btn-reviewed-yes', 'btn-reviewed-no');
+          });
 
-        // Highlight clicked button
-        if (decision === 'yes') {
-          button.classList.add('btn-reviewed-yes');
-        } else {
-          button.classList.add('btn-reviewed-no');
+          // Highlight clicked button
+          if (decision === 'yes') {
+            button.classList.add('btn-reviewed-yes');
+          } else {
+            button.classList.add('btn-reviewed-no');
+          }
         }
-      }
-    });
+      });
   }
 </script>
