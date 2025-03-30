@@ -1,0 +1,174 @@
+{% include "header.html" %}
+{% load static %}
+{% block content %}
+
+<!-- Custom Styles -->
+<style>
+  body {
+    background: linear-gradient(135deg, #edf2f7 0%, #cfd9df 100%);
+    font-family: 'Poppins', sans-serif;
+  }
+
+  .edit-profile-container {
+    max-width: 800px;
+    margin: 60px auto;
+    padding: 0 15px;
+  }
+
+  .edit-profile-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    padding: 40px;
+    transition: transform 0.3s ease;
+    overflow: hidden; /* Ensure all content is contained */
+  }
+  .edit-profile-card:hover {
+    transform: translateY(-5px);
+  }
+
+  .edit-profile-heading {
+    font-size: 2.4rem;
+    font-weight: 700;
+    color: #333;
+    text-align: center;
+    border-bottom: 3px solid #007bff;
+    padding-bottom: 15px;
+    margin-bottom: 30px;
+  }
+
+  .section-heading {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 5px;
+  }
+
+  .form-group label {
+    font-weight: 500;
+  }
+  .form-control {
+    border-radius: 6px;
+    border: 1px solid #ced4da;
+    transition: all 0.3s ease;
+  }
+  .form-control:focus {
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+    border-color: #007bff;
+  }
+
+  /* Custom File Input: Force full width and prevent overflow */
+  .form-control-file {
+    display: block;
+    width: 100%;
+    margin-top: 5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Buttons */
+  .btn-submit {
+    background-color: #007bff;
+    border-color: #007bff;
+    font-weight: 600;
+    padding: 12px 25px;
+    border-radius: 6px;
+    transition: background-color 0.3s ease;
+    color: white;
+  }
+  .btn-submit:hover {
+    background-color: #0056b3;
+    border-color: #004992;
+  }
+  .btn-cancel {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    font-weight: 600;
+    padding: 12px 25px;
+    border-radius: 6px;
+    transition: background-color 0.3s ease;
+    color: white;
+  }
+  .btn-cancel:hover {
+    background-color: #545b62;
+    border-color: #40474e;
+  }
+
+  /* Toast Container for Floating Notification */
+  #toast-container {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 9999;
+  }
+  .topbar,
+  .navbar {
+    font-family: 'Open Sans', sans-serif !important;
+    /* You can add other header-specific rules if needed, e.g.: */
+    background-color: inherit !important;
+    color: inherit !important;
+  }
+
+  /* Optionally, scope page-specific styles so they do not affect the header */
+  .main-content {
+    /* Page-specific styling (e.g., for login or registration content) */
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(135deg, #edf2f7 0%, #cfd9df 100%);
+  }
+</style>
+
+<!-- Toast Notification for Success -->
+<div id="toast-container" aria-live="polite" aria-atomic="true">
+  {% if messages %}
+    {% for message in messages %}
+      {% if 'success' in message.tags %}
+        <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true" data-delay="2000">
+          <div class="toast-header">
+            <strong class="mr-auto text-primary">Success</strong>
+            <small class="text-muted">Now</small>
+            <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="toast-body">
+            {{ message }}
+          </div>
+        </div>
+        <script>
+          // Auto-redirect to profile page after 2 seconds
+          setTimeout(function() {
+            window.location.href = "{% url 'profile' %}";
+          }, 2000);
+        </script>
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+</div>
+
+<div class="container edit-profile-container">
+  <div class="edit-profile-card">
+    <h2 class="edit-profile-heading">Edit Profile</h2>
+    <form method="POST" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="row">
+        <div class="col-md-6">
+          <h4 class="section-heading">Basic User Info</h4>
+          {{ user_form.as_p }}
+        </div>
+        <div class="col-md-6">
+          <h4 class="section-heading">Teacher Profile</h4>
+          {{ profile_form.as_p }}
+        </div>
+      </div>
+      <div class="d-flex flex-wrap justify-content-between mt-4">
+        <button type="submit" class="btn btn-submit">Save Changes</button>
+        <a href="{% url 'profile' %}" class="btn btn-cancel">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

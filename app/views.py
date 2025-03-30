@@ -14,6 +14,11 @@ from django.db.models import Q
 from django.core.mail import send_mail
 from django.conf import settings
 from .utils import send_sms_notification
+from .forms import EditProfileForm, TeacherProfileForm
+from django.contrib import messages
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth import update_session_auth_hash
+
 
 # Global stop event
 stop_event = Event()
@@ -81,9 +86,64 @@ def logout(request):
     auth_logout(request)
     return redirect('index')
 
+
 @login_required
 def profile(request):
     return render(request, 'profile.html')  # assuming your template is in templates/profile.html
+
+
+@login_required
+def profile_view(request):
+    """Render the user's profile page (the one you already have)."""
+    return render(request, 'profile.html')  # Your existing page
+
+
+@login_required
+def edit_profile(request):
+    """Allow user to edit basic info (User) + teacher-specific info (TeacherProfile)."""
+    user = request.user
+    # Attempt to fetch or create the TeacherProfile:
+    teacher_profile, _ = TeacherProfile.objects.get_or_create(user=user)
+
+    if request.method == 'POST':
+        user_form = EditProfileForm(request.POST, instance=user)
+        profile_form = TeacherProfileForm(request.POST, request.FILES, instance=teacher_profile)
+
+        if user_form.is_valid() and profile_form.is_valid():
+            user_form.save()
+            profile_form.save()
+            messages.success(request, 'Profile updated successfully!')
+            return redirect('profile')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        user_form = EditProfileForm(instance=user)
+        profile_form = TeacherProfileForm(instance=teacher_profile)
+
+    context = {
+        'user_form': user_form,
+        'profile_form': profile_form
+    }
+    return render(request, 'edit_profile.html', context)
+
+
+@login_required
+def change_password(request):
+    """Allow user to change their password using Django's built-in PasswordChangeForm."""
+    if request.method == 'POST':
+        form = PasswordChangeForm(user=request.user, data=request.POST)
+        if form.is_valid():
+            user = form.save()
+            # Important! Keep user logged in after password change
+            update_session_auth_hash(request, user)
+            messages.success(request, 'Your password was changed successfully!')
+            return redirect('profile')
+        else:
+            messages.error(request, 'Please fix the error below.')
+    else:
+        form = PasswordChangeForm(user=request.user)
+    return render(request, 'change_password.html', {'form': form})
+
 
 
 @login_required
@@ -284,4 +344,6 @@ def view_teachers(request):
         'building_filter': building_filter,
     }
     return render(request, 'view_teachers.html', context)
+
+
 

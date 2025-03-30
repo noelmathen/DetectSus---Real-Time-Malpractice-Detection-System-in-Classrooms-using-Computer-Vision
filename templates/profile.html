@@ -1,8 +1,14 @@
-{% extends "header.html" %}
+{% include "header.html" %}
 {% load static %}
 {% block content %}
 
 <style>
+  /* Background & Font */
+  body {
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+    font-family: 'Poppins', sans-serif;
+  }
+
   .profile-container {
     margin-top: 60px;
     margin-bottom: 60px;
@@ -10,19 +16,24 @@
 
   .profile-card {
     border-radius: 15px;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
     background-color: #ffffff;
     padding: 40px;
-    transition: all 0.3s ease-in-out;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+  }
+
+  .profile-card:hover {
+    transform: translateY(-5px);
   }
 
   .profile-heading {
-    font-size: 2.2rem;
+    font-size: 2.4rem;
     font-weight: 700;
     color: #333;
-    border-bottom: 2px solid #f0f0f0;
+    border-bottom: 3px solid #007bff;
     padding-bottom: 15px;
     margin-bottom: 30px;
+    text-align: center;
   }
 
   .profile-picture {
@@ -32,11 +43,11 @@
     border: 5px solid #007bff;
     object-fit: cover;
     margin-bottom: 20px;
-    transition: 0.3s ease-in-out;
+    transition: transform 0.3s ease;
   }
 
   .profile-picture:hover {
-    transform: scale(1.05);
+    transform: scale(1.1);
   }
 
   .badge-role {
@@ -49,25 +60,38 @@
     display: inline-block;
   }
 
+  .profile-table {
+    width: 100%;
+  }
+
   .profile-table th {
-    width: 150px;
+    width: 160px;
     font-weight: 600;
     color: #555;
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #dee2e6;
   }
 
   .profile-table td {
+    padding: 10px;
     color: #333;
+    border-bottom: 1px solid #dee2e6;
   }
 
   .btn-action {
     min-width: 160px;
     font-weight: 600;
-    margin: 5px 10px 0 0;
+    margin: 10px 10px 0 0;
+    border-radius: 6px;
+    padding: 10px 20px;
+    transition: background-color 0.3s ease;
   }
 
   .btn-edit {
     background-color: #007bff;
-    color: white;
+    color: #fff;
+    border: none;
   }
 
   .btn-edit:hover {
@@ -76,7 +100,8 @@
 
   .btn-password {
     background-color: #6c757d;
-    color: white;
+    color: #fff;
+    border: none;
   }
 
   .btn-password:hover {
@@ -90,6 +115,21 @@
     margin-bottom: 20px;
     font-weight: 600;
     color: #004080;
+    border-radius: 6px;
+  }
+  .topbar,
+  .navbar {
+    font-family: 'Open Sans', sans-serif !important;
+    /* You can add other header-specific rules if needed, e.g.: */
+    background-color: inherit !important;
+    color: inherit !important;
+  }
+
+  /* Optionally, scope page-specific styles so they do not affect the header */
+  .main-content {
+    /* Page-specific styling (e.g., for login or registration content) */
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(135deg, #edf2f7 0%, #cfd9df 100%);
   }
 </style>
 
@@ -97,13 +137,11 @@
   <div class="row justify-content-center">
     <div class="col-lg-10">
       <div class="profile-card">
-
         {% if request.user.is_superuser %}
           <div class="admin-highlight">
             🔐 You are logged in as <strong>Admin</strong>. You have full access to all system functionalities.
           </div>
         {% endif %}
-
         <div class="row">
           <!-- Profile Picture and Role -->
           <div class="col-md-4 text-center">
@@ -112,7 +150,6 @@
             {% else %}
               <img src="{% static 'img/default_profile.png' %}" class="profile-picture" alt="Default Picture">
             {% endif %}
-
             <div>
               {% if request.user.is_superuser %}
                 <span class="badge-role">Admin</span>
@@ -120,10 +157,8 @@
                 <span class="badge-role">Teacher</span>
               {% endif %}
             </div>
-
-            <a href="#" class="btn btn-edit btn-action mt-3">Edit Profile</a>
+            <a href="{% url 'edit_profile' %}" class="btn btn-edit btn-action mt-3">Edit Profile</a>
           </div>
-
           <!-- User Info -->
           <div class="col-md-8">
             <h2 class="profile-heading">My Profile</h2>
@@ -157,10 +192,9 @@
                 {% endif %}
               </tbody>
             </table>
-            <a href="#" class="btn btn-password btn-action">Change Password</a>
+            <a href="{% url 'change_password' %}" class="btn btn-password btn-action mt-3">Change Password</a>
           </div>
         </div>
-
       </div>
     </div>
   </div>
