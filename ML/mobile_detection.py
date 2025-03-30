@@ -1,133 +1,227 @@
-#mobile_detection.py
-from ultralytics import YOLO
 import cv2
-import numpy as np
-from datetime import datetime
-import mysql.connector
-import shutil
 import os
+import shutil
+import numpy as np
+import mysql.connector
+from datetime import datetime
+from ultralytics import YOLO
 
-# MySQL Connection (Ensure consistency)
-db = mysql.connector.connect(
-    host="localhost",     
-    user="root",          
-    password="", 
-    database="exam_monitoring"
-)
+# If running on the client, import paramiko + scp
+IS_CLIENT = False  # Change to True if running as client
+
+if IS_CLIENT:
+    import paramiko
+    from scp import SCPClient
+
+# ========================
+# CONFIGURABLE VARIABLES
+# ========================
+USE_CAMERA = True
+CAMERA_INDEX = 0
+VIDEO_PATH = "test_videos/Phone_2.mp4"
+
+LECTURE_HALL_NAME = "LH2"
+BUILDING = "KE Block"
+
+DB_USER = "root"
+DB_PASSWORD = ""
+DB_NAME = "exam_monitoring"
+
+FRAME_WIDTH = 1280
+FRAME_HEIGHT = 720
+
+# Model for mobile detection
+MOBILE_MODEL_PATH = "yolo11m.pt"
+MEDIA_DIR = "../media/"
+ACTION_NAME = "Mobile Phone Detected"
+
+# Minimum consecutive frames with a phone to confirm event
+MOBILE_THRESHOLD = 3
+# ========================
+
+# ========================
+# SSH CONFIG (Only if client)
+# ========================
+if IS_CLIENT:
+    hostname = "192.168.147.145"
+    username = "SHRUTI S"
+    password_ssh = "1234shibu"
+
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh.connect(hostname, port=22, username=username, password=password_ssh)
+
+    scp = SCPClient(ssh.get_transport())
+
+    # Remote DB
+    db = mysql.connector.connect(
+        host=hostname,
+        port=3306,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        database=DB_NAME
+    )
+else:
+    # Local DB
+    db = mysql.connector.connect(
+        host="localhost",
+        user=DB_USER,
+        password=DB_PASSWORD,
+        database=DB_NAME
+    )
+
 cursor = db.cursor()
 
-# Load YOLOv8 model for mobile detection
-model = YOLO("yolo11m.pt")  # Use a trained model if available
+# ========================
+# MODEL LOADING
+# ========================
+model = YOLO(MOBILE_MODEL_PATH)
 
-# Choose between webcam or video file
-use_camera = True  
+# ========================
+# VIDEO SOURCE
+# ========================
+cap = cv2.VideoCapture(CAMERA_INDEX if USE_CAMERA else VIDEO_PATH)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
 
-if use_camera:
-    cap = cv2.VideoCapture(1)  # 0 is the default webcam
-else:
-    video_path = "test_videos/Phone_2.mp4"
-    cap = cv2.VideoCapture(video_path)
+# ========================
+# VARIABLES
+# ========================
+phone_in_progress = False  # Are we currently in a phone detection event?
+phone_frames = 0           # Count how many consecutive frames had a phone
+video_control = False      # Are we currently recording?
+out = None
 
-# Set resolution
-frame_width, frame_height = 1280, 720
-
-# Malpractice tracking variables (Same as `leaning.py`)
-malpractice = 0
-video_control = 0
-out = None  # Ensure 'out' is defined
-
+# ========================
+# MAIN LOOP
+# ========================
 while cap.isOpened():
-    mobile_check = []  # Track per-frame detections
-    mobile_detected = False
-
     ret, frame = cap.read()
     if not ret:
         break
 
-    frame = cv2.resize(frame, (frame_width, frame_height))
+    frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
 
-    # Run YOLO inference
+    # 1) Overly day/date/time in top-left
+    now = datetime.now()
+    day_str = now.strftime('%a')
+    date_str = now.strftime('%d-%m-%Y')
+    hour_12 = now.strftime('%I')  # 12-hour format with leading zeros
+    minute_str = now.strftime('%M')
+    second_str = now.strftime('%S')
+    ampm = now.strftime('%p').lower()  # 'am' or 'pm'
+    time_display = f"{hour_12}:{minute_str}:{second_str} {ampm}"
+    overlay_text = f"{day_str} | {date_str} | {time_display}"
+    cv2.putText(frame, overlay_text, (50, 100),
+                cv2.FONT_HERSHEY_DUPLEX, 1.1, (255, 255, 255), 2, cv2.LINE_AA)
+
+    # 2) Model inference
     results = model(frame)
-
-    # Store detected mobile phone bounding boxes
-    cell_phone_detections = []
+    mobile_detected = False
 
     for result in results:
         if result.boxes is not None:
             for box in result.boxes:
-                if int(box.cls) == 67:  # Mobile phone class ID
-                    x1, y1, x2, y2 = map(int, box.xyxy[0])  # Bounding box coordinates
-                    cell_phone_detections.append((x1, y1, x2, y2))
+                # If class ID 67 => phone in COCO; adjust if needed
+                if int(box.cls) == 67:
+                    x1, y1, x2, y2 = map(int, box.xyxy[0])
                     mobile_detected = True
+                    # Draw bounding box + label
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 165, 255), 2)
+                    cv2.putText(frame, "Mobile", (x1, y1 - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 165, 255), 2)
 
-    # If a mobile phone is detected
+    # 3) If phone is detected this frame
     if mobile_detected:
-        malpractice += 1
-        cv2.putText(frame, "Mobile Detected!", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-
-        # Draw bounding boxes for mobile detection
-        for (x1, y1, x2, y2) in cell_phone_detections:
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 165, 255), 2)  # Orange color
-            cv2.putText(frame, "Mobile", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 165, 255), 2)
-
-    # Track detections
-    mobile_check.append(mobile_detected)
-
-    # Start video recording if malpractice is detected
-    if malpractice >= 1:
-        if video_control == 0:
-            print("Started video recording..")
-            video_control = 1
-            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-            out = cv2.VideoWriter("output.mp4", fourcc, 30, (frame_width, frame_height))
-
-        out.write(frame)  # Save the frame
-
-    print("Mobile detection check:", mobile_check)
-
-    # Stop recording & log malpractice if mobile detection persists
-    if True not in mobile_check:
-        print("No mobile detected")
-        if malpractice >= 3:
-            print("Saving malpractice evidence..")
-            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-
-            # Ensure 'out' is released before saving
-            if out is not None:
-                out.release()
-
-            destination_path = f"../media/malpractice_{timestamp}.mp4"
-
-            # Ensure the directory exists
-            destination_folder = os.path.dirname(destination_path)
-            os.makedirs(destination_folder, exist_ok=True)
-
-            shutil.copy("output.mp4", destination_path)
-
-            # Insert malpractice event into MySQL (EXACTLY like `leaning.py`)
-            sql = "INSERT INTO app_malpraticedetection (time, malpractice, proof) VALUES (%s, %s, %s)"
-            values = (timestamp, "Mobile Phone Usage", f"./{destination_path}")
-            cursor.execute(sql, values)
-            db.commit()
-
-            malpractice = 0
-            video_control = 0
+        # If we weren't previously detecting a phone event => start
+        if not phone_in_progress:
+            phone_in_progress = True
+            phone_frames = 1
+            # Start recording if not already
+            if not video_control:
+                video_control = True
+                fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+                out = cv2.VideoWriter("output.mp4", fourcc, 30, (FRAME_WIDTH, FRAME_HEIGHT))
         else:
-            if video_control == 1:
-                if out is not None:
+            # Already in progress, so just increment frame count
+            phone_frames += 1
+
+        cv2.putText(frame, ACTION_NAME + "!", (850, 100),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
+        # Write to video if recording
+        if video_control and out is not None:
+            out.write(frame)
+
+    else:
+        # No phone in this frame
+        # If we had an ongoing detection event, finalize it
+        if phone_in_progress:
+            phone_in_progress = False
+            # phone_frames has total consecutive phone frames
+            if phone_frames >= MOBILE_THRESHOLD:
+                # finalize and insert into DB
+                if video_control and out is not None:
                     out.release()
-                malpractice = 0
-                video_control = 0
 
-    # Display the frame
+                now_save = datetime.now()
+                date_db = now_save.date().isoformat()
+                time_db = now_save.time().strftime('%H:%M:%S')
+
+                # Lecture hall ID
+                cursor.execute(
+                    "SELECT id FROM app_lecturehall WHERE hall_name = %s AND building = %s LIMIT 1",
+                    (LECTURE_HALL_NAME, BUILDING)
+                )
+                hall_result = cursor.fetchone()
+                hall_id = hall_result[0] if hall_result else None
+
+                timestamp = now_save.strftime("%Y-%m-%d_%H-%M-%S")
+                proof_filename = f"output_{timestamp}.mp4"
+                destination_path = os.path.join(MEDIA_DIR, proof_filename)
+                shutil.copy("output.mp4", destination_path)
+
+                if IS_CLIENT:
+                    from_path = "output.mp4"  # local
+                    to_path = destination_path
+                    scp.put(from_path, to_path)
+
+                sql = """
+                    INSERT INTO app_malpraticedetection (date, time, malpractice, proof, lecture_hall_id)
+                    VALUES (%s, %s, %s, %s, %s)
+                """
+                values = (date_db, time_db, ACTION_NAME, proof_filename, hall_id)
+                cursor.execute(sql, values)
+                db.commit()
+            else:
+                # Not enough consecutive phone frames => discard video
+                if video_control and out is not None:
+                    out.release()
+                if os.path.exists("output.mp4"):
+                    os.remove("output.mp4")
+
+            # Reset counters
+            phone_frames = 0
+            video_control = False
+            out = None
+        else:
+            # We are not in a phone_in_progress event => do nothing
+            pass
+
+    # If we are in progress and actively recording, keep saving frames
+    if phone_in_progress and video_control and out is not None:
+        out.write(frame)
+
     cv2.imshow("Exam Monitoring - Mobile Detection", frame)
-
-    # Break on 'q' key press
     if cv2.waitKey(1) & 0xFF == ord("q"):
         break
 
-# Release resources
 cap.release()
-if out is not None:
+if video_control and out is not None:
     out.release()
+
+if IS_CLIENT:
+    scp.close()
+    ssh.close()
+
 cv2.destroyAllWindows()

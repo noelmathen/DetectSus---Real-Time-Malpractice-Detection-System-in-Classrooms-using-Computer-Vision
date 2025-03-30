@@ -1,153 +1,208 @@
 #hand_raise.py
-from ultralytics import YOLO
 import cv2
-import numpy as np
-from datetime import datetime
-import mysql.connector
-import shutil
 import os
+import shutil
+import numpy as np
+import mysql.connector
+from datetime import datetime
+from ultralytics import YOLO
 
-# MySQL Connection
-db = mysql.connector.connect(
-    host="localhost",     # Change this to your MySQL host
-    user="root",          # Your MySQL username
-    password="",  # Your MySQL password
-    database="exam_monitoring"
-)
+# If running on the client, import paramiko + scp
+IS_CLIENT = False
+if IS_CLIENT:
+    import paramiko
+    from scp import SCPClient
+
+# ========================
+# CONFIGURABLE VARIABLES
+# ========================
+USE_CAMERA = False
+CAMERA_INDEX = 1
+VIDEO_PATH = "test_videos/Top_Corner.mp4"
+
+LECTURE_HALL_NAME = "LH2"
+BUILDING = "KE Block"
+
+# Database Credentials
+DB_USER = "root"
+DB_PASSWORD = ""
+DB_NAME = "exam_monitoring"
+
+FRAME_WIDTH = 1280
+FRAME_HEIGHT = 720
+
+POSE_MODEL_PATH = "yolov8n-pose.pt"
+MEDIA_DIR = "../media/"
+ACTION_NAME = "Hand Raised"
+# ========================
+
+# ========================
+# SSH CONFIG (Only if client)
+# ========================
+if IS_CLIENT:
+    hostname = "192.168.147.145"  # IP or hostname of the host machine
+    username = "SHRUTI S"
+    password_ssh = "1234shibu"  # Password for SSH
+
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh.connect(hostname, port=22, username=username, password=password_ssh)
+
+    scp = SCPClient(ssh.get_transport())
+
+    # Connect to remote DB from client
+    db = mysql.connector.connect(
+        host=hostname,
+        port=3306,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        database=DB_NAME
+    )
+else:
+    # Local DB connection if host
+    db = mysql.connector.connect(
+        host="localhost",
+        user=DB_USER,
+        password=DB_PASSWORD,
+        database=DB_NAME
+    )
+
 cursor = db.cursor()
 
-# Load YOLOv8 models
-pose_model = YOLO("yolov8n-pose.pt")  # For pose estimation
-#object_model = YOLO("yolov8n.pt")   # For object detection (mobile phones)
+# Load YOLOv8 pose model
+pose_model = YOLO(POSE_MODEL_PATH)
 
-# Choose between webcam or video file
-use_camera = False  
-
-if use_camera:
-    cap = cv2.VideoCapture(1)  # 0 is the default webcam
-else:
-    video_path = "test_videos/Top_Corner.mp4"
-    cap = cv2.VideoCapture(video_path)
-
-# Set resolution
-frame_width, frame_height = 1280, 720
-
+# Open capture device
+cap = cv2.VideoCapture(CAMERA_INDEX if USE_CAMERA else VIDEO_PATH)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
 
 def is_hand_raised(keypoints):
     """
     Detect if a student is raising their hand based on keypoint positions.
+    Keeping the original logic.
     """
     if keypoints is None or len(keypoints) < 11:
         return False
-    
-    left_shoulder, right_shoulder, left_elbow, right_elbow, left_wrist, right_wrist = keypoints[5:11]
-    
-    #if None in [left_shoulder, right_shoulder, left_elbow, right_elbow, left_wrist, right_wrist]:
-    #    return False
-    
-    if left_shoulder is None or right_shoulder is None or left_elbow is None or right_elbow is None or left_wrist is None or right_wrist is None:
-        return False 
-    
-    threshold = min(left_shoulder[1], right_shoulder[1]) + 30# Shoulder height
 
+    left_shoulder, right_shoulder, left_elbow, right_elbow, left_wrist, right_wrist = keypoints[5:11]
+
+    if (left_shoulder is None or right_shoulder is None or
+            left_elbow is None or right_elbow is None or
+            left_wrist is None or right_wrist is None):
+        return False
+
+    # Shoulder height threshold
+    threshold = min(left_shoulder[1], right_shoulder[1]) + 30
 
     if right_wrist[1] == 0.0:
         right_wrist[1] = threshold + 10
-
     if left_wrist[1] == 0.0:
         left_wrist[1] = threshold + 10
 
-    #print("Threhsold:",threshold)
-    #print("left_wrist:",left_wrist[1])
-    #print("right_wrist:",right_wrist[1])
-    if left_wrist[1] < threshold  or right_wrist[1] < threshold:  # If either wrist is above shoulders
-        #print("hand raise")
+    # If either wrist is above shoulders
+    if left_wrist[1] < threshold or right_wrist[1] < threshold:
         return True
-    
+
     return False
 
 malpractice = 0
 video_control = 0
 
-
 while cap.isOpened():
-    hand_raised_check = list()
+    hand_raised_check = []
     hand_raised = False
     ret, frame = cap.read()
     if not ret:
         break
-    
-    frame = cv2.resize(frame, (frame_width, frame_height))
 
-    # Run YOLOv8 Pose Model
+    frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
+
+    # Run pose model
     pose_results = pose_model(frame)
 
+    # -----------------------
+    # Construct day/date/time overlay
+    # -----------------------
+    now = datetime.now()
+    day_str = now.strftime('%a')           # e.g. Wed
+    date_str = now.strftime('%d-%m-%Y')    # dd-mm-yyyy
+    hour_12 = now.strftime('%I')  # 12-hour format with leading zeros
+    minute_str = now.strftime('%M')
+    second_str = now.strftime('%S')
+    ampm = now.strftime('%p').lower()  # 'am' or 'pm'
+    time_display = f"{hour_12}:{minute_str}:{second_str} {ampm}"
 
-    print("Starting pose estimation")
+    overlay_text = f"{day_str} | {date_str} | {time_display}"
+    cv2.putText(frame, overlay_text, (50, 100),
+                cv2.FONT_HERSHEY_DUPLEX, 1.1, (255, 255, 255), 2, cv2.LINE_AA)
 
-    # Process Pose Estimation Results
     for result in pose_results:
-        print("getting results")
         keypoints = result.keypoints.xy.cpu().numpy() if result.keypoints is not None else []
-
         for kp in keypoints:
-            print("getting key points")
-
-
             if is_hand_raised(kp):
-                print("Checking hand raise")
-                malpractice = malpractice + 1
-                cv2.putText(frame, "Hand Raised!", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+                malpractice += 1
+                cv2.putText(frame, ACTION_NAME + "!", (850, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
+                # Mark relevant keypoints in red/blue
                 for x, y in kp[6:11]:
-                    cv2.circle(frame, (int(x), int(y)), 5, (255, 0, 0), -1)
+                    cv2.circle(frame, (int(x), int(y)), 5, (0, 0, 255), -1)  # Red
                 hand_raised = True
 
-                
-
-            # Draw keypoints (default color green)
+            # If not raising hand, mark keypoints in green
             if not hand_raised:
                 for x, y in kp[6:11]:
                     cv2.circle(frame, (int(x), int(y)), 5, (0, 255, 0), -1)
-            for x, y in kp[11:]:
-                cv2.circle(frame, (int(x), int(y)), 5, (0, 255, 0), -1)
+
+            # The rest of the keypoints (head, etc.) in green
             for x, y in kp[:6]:
+                cv2.circle(frame, (int(x), int(y)), 5, (0, 255, 0), -1)
+            for x, y in kp[11:]:
                 cv2.circle(frame, (int(x), int(y)), 5, (0, 255, 0), -1)
 
             hand_raised_check.append(hand_raised)
 
-    print("malpractice:",malpractice)
-    if malpractice >= 1 :
+    # Start video recording if we see at least one instance
+    if malpractice >= 1:
         if video_control == 0:
-            print("Started video recording..")
             video_control = 1
-            #Save output video
             fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-            out = cv2.VideoWriter("output.mp4", fourcc, 30, (frame_width, frame_height))
-
-        # Save and display frame
+            out = cv2.VideoWriter("output.mp4", fourcc, 30, (FRAME_WIDTH, FRAME_HEIGHT))
         out.write(frame)
-    print("hand raise check:",hand_raised_check)
-    if True not in hand_raised_check:
-        print("Not hand raise")
-        if malpractice>=5:
-            print("saving data..")
-            now = datetime.now()
-            date_str = now.date().isoformat()       # e.g., '2025-03-24'
-            time_str = now.time().strftime('%H:%M:%S')  # e.g., '14:53:12'
 
-            # Update your destination path using full datetime
-            timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
-            destination_path = f"../media/output_{timestamp}.mp4"
+    # If no one is raising their hand in this frame
+    if True not in hand_raised_check:
+        # If we saw repeated times => save to DB
+        if malpractice >= 5:
+            now_save = datetime.now()
+            date_db = now_save.date().isoformat()             # e.g. 2025-03-24
+            time_db = now_save.time().strftime('%H:%M:%S')    # e.g. 14:53:12
+
+            # Get lecture hall ID
+            cursor.execute(
+                "SELECT id FROM app_lecturehall WHERE hall_name = %s AND building = %s LIMIT 1",
+                (LECTURE_HALL_NAME, BUILDING)
+            )
+            hall_result = cursor.fetchone()
+            hall_id = hall_result[0] if hall_result else None
+
+            timestamp = now_save.strftime("%Y-%m-%d_%H-%M-%S")
+            proof_filename = f"output_{timestamp}.mp4"
+            destination_path = os.path.join(MEDIA_DIR, proof_filename)
             shutil.copy("output.mp4", destination_path)
 
-            # Make sure your database table has 'date' and 'time' fields
-            sql = "INSERT INTO app_malpraticedetection (date, time, malpractice, proof) VALUES (%s, %s, %s, %s)"
-            values = (date_str, time_str, "Hand Raised", f"output_{timestamp}.mp4")
+            # If client, also scp to remote
+            if IS_CLIENT:
+                scp.put("output.mp4", destination_path)
+
+            # Insert into DB table (like turning_back script)
+            sql = """
+                INSERT INTO app_malpraticedetection (date, time, malpractice, proof, lecture_hall_id)
+                VALUES (%s, %s, %s, %s, %s)
+            """
+            values = (date_db, time_db, ACTION_NAME, proof_filename, hall_id)
             cursor.execute(sql, values)
             db.commit()
 
-            db.commit()
-            print("Data inserted successfully")
             malpractice = 0
             video_control = 0
         else:
@@ -156,12 +211,9 @@ while cap.isOpened():
                 malpractice = 0
                 video_control = 0
 
-
-
     cv2.imshow("Exam Monitoring", frame)
 
-
-    if cv2.waitKey(1) & 0xFF == ord("q"):
+    if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
 cap.release()
