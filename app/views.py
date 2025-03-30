@@ -126,68 +126,81 @@ def malpractice_log(request):
 @login_required
 @user_passes_test(is_admin)
 def review_malpractice(request):
-    if request.method == 'POST' and request.user.is_superuser:
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+    try:
         data = json.loads(request.body)
         proof_filename = data.get('proof')
         decision = data.get('decision')
+
+        if not proof_filename or decision not in ['yes', 'no']:
+            return JsonResponse({'success': False, 'error': 'Invalid data received'})
+
+        # Find the malpractice log
         try:
             log = MalpraticeDetection.objects.get(proof=proof_filename)
-            log.verified = True
-            log.is_malpractice = (decision == 'yes')
-            log.save()
-
-            # If it's indeed malpractice -> notify assigned teacher by SMS
-            if log.is_malpractice and log.lecture_hall and log.lecture_hall.assigned_teacher:
-                # find teacher phone
-                teacher_user = log.lecture_hall.assigned_teacher
-                try:
-                    teacher_profile = teacher_user.teacherprofile
-                    if teacher_profile.phone:
-                        # Compose message
-                        message_body = (
-                            f"\n\nDear {teacher_user.get_full_name() or teacher_user.username},\n\n"
-                            f"A malpractice has been detected and approved by the admin.\n\n"
-                            f"Details:\n"
-                            f"- 📅 Date: {log.date}\n"
-                            f"- ⏰ Time: {log.time}\n"
-                            f"- 🎯 Type: {log.malpractice}\n"
-                            f"- 🏫 Lecture Hall: {log.lecture_hall.building} - {log.lecture_hall.hall_name}\n\n"
-                            f"You can view the recorded video proof from your DetectSus portal.\n\n"
-                            f"Best regards,\n"
-                            f"DetectSus Team"
-                        )
-                        message_body = (
-                            f"Dear {teacher_user.get_full_name() or teacher_user.username},\n\n"
-                            f"A malpractice has been detected and approved by the admin.\n\n"
-                            f"Details:\n"
-                            f"- 📅 Date: {log.date}\n"
-                            f"- ⏰ Time: {log.time}\n"
-                            f"- 🎯 Type: {log.malpractice}\n"
-                            f"- 🏫 Lecture Hall: {log.lecture_hall.building} - {log.lecture_hall.hall_name}\n\n"
-                            f"You can view the recorded video proof from your DetectSus portal.\n\n"
-                            f"Best regards,\n"
-                            f"DetectSus Team"
-                        )
-                        sms_message_body = (
-                            f"\nMalpractice confirmed by admin.\n"
-                            f"{log.date} at {log.time} - {log.malpractice} in {log.lecture_hall.building}-{log.lecture_hall.hall_name}.\n"
-                            f"Check DetectSus for video."
-                        )
-
-                        # Send SMS
-                        send_sms_notification(f"+91 {teacher_profile.phone}", sms_message_body)
-                except TeacherProfile.DoesNotExist:
-                    print("problem")
-                    pass
-
-                subject = 'Malpractice Alert: New Case Reviewed'
-                send_mail(subject, message_body, settings.EMAIL_HOST_USER, [teacher_user.email], fail_silently=False)
-            return JsonResponse({'success': True})
         except MalpraticeDetection.DoesNotExist:
-            return JsonResponse({'success': False, 'error': 'Log not found'})
-    return JsonResponse({'success': False, 'error': 'Unauthorized or bad request'})
+            return JsonResponse({'success': False, 'error': 'Malpractice log not found'})
 
+        # Update the log
+        log.verified = True
+        log.is_malpractice = (decision == 'yes')
+        log.save()
 
+        # If approved as malpractice, notify the assigned teacher
+        if log.is_malpractice and log.lecture_hall and log.lecture_hall.assigned_teacher:
+            teacher_user = log.lecture_hall.assigned_teacher
+
+            try:
+                teacher_profile = teacher_user.teacherprofile
+            except TeacherProfile.DoesNotExist:
+                print(f"[WARN] No profile found for user: {teacher_user.username}")
+                teacher_profile = None
+
+            # Send Email Notification
+            subject = 'Malpractice Alert: New Case Reviewed'
+            message_body = (
+                f"Dear {teacher_user.get_full_name() or teacher_user.username},\n\n"
+                f"A malpractice has been detected and approved by the admin.\n\n"
+                f"Details:\n"
+                f"- 📅 Date: {log.date}\n"
+                f"- ⏰ Time: {log.time}\n"
+                f"- 🎯 Type: {log.malpractice}\n"
+                f"- 🏫 Lecture Hall: {log.lecture_hall.building} - {log.lecture_hall.hall_name}\n\n"
+                f"You can view the recorded video proof from your DetectSus portal.\n\n"
+                f"Best regards,\nDetectSus Team"
+            )
+
+            try:
+                send_mail(subject, message_body, settings.EMAIL_HOST_USER, [teacher_user.email], fail_silently=False)
+            except Exception as e:
+                print(f"\n[ERROR] Email sending failed: {e}\n")
+
+            # Send SMS Notification if phone is available
+            if teacher_profile and teacher_profile.phone:
+                sms_message_body = (
+                    f'''
+                    \nDear {teacher_user.get_full_name() or teacher_user.username},\n\n'''
+                    f"🔔 Malpractice Alert\n"
+                    f"{log.date} | {log.time}\n"
+                    f"{log.malpractice} detected in {log.lecture_hall.building}-{log.lecture_hall.hall_name}.\n"
+                    f"\nCheck DetectSus for video proof."
+                )
+
+                try:
+                    send_sms_notification(f"+91{teacher_profile.phone.strip()}", sms_message_body)
+                except Exception as e:
+                    print(f"\n[ERROR] SMS sending failed: {e}\n")
+
+        return JsonResponse({'success': True})
+
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON format'})
+
+    except Exception as e:
+        print(f"[EXCEPTION] Unexpected error in review_malpractice: {e}")
+        return JsonResponse({'success': False, 'error': 'Internal server error'})
 
 
 @login_required
