@@ -36,3 +36,7 @@ Thumbs.db
 
 # Test outputs
 test_videos/
+
+
+*.mp4
+output*

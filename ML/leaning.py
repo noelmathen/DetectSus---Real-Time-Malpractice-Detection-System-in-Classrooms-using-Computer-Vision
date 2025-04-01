@@ -82,27 +82,40 @@ cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
 
 def is_leaning(keypoints):
     """
-    Determines if a student is leaning using an example heuristic:
-    compares distances between eyes, ears, and shoulders.
-    You can adjust logic as needed for your use case.
+    Improved leaning detection:
+    - Ensures shoulders are not aligned vertically (to avoid small head tilts)
+    - Checks if head is clearly shifted left or right beyond a realistic threshold
+    - Ignores tiny deviations (e.g., slight head turns)
     """
     if keypoints is None or len(keypoints) < 7:
         return False
 
     nose, left_eye, right_eye, left_ear, right_ear, left_shoulder, right_shoulder = keypoints[:7]
-    if (nose is None or left_eye is None or right_eye is None or
-        left_ear is None or right_ear is None or
-        left_shoulder is None or right_shoulder is None):
+
+    if any(pt is None for pt in [nose, left_eye, right_eye, left_ear, right_ear, left_shoulder, right_shoulder]):
         return False
 
     eye_dist = abs(left_eye[0] - right_eye[0])
     shoulder_dist = abs(left_shoulder[0] - right_shoulder[0])
+    shoulder_height_diff = abs(left_shoulder[1] - right_shoulder[1])
+    head_center_x = (left_eye[0] + right_eye[0]) / 2
+    shoulder_center_x = (left_shoulder[0] + right_shoulder[0]) / 2
 
-    # If eye distance is < 20% of shoulder distance + ear alignment => leaning
-    if eye_dist < 0.2 * shoulder_dist and left_ear[0] > left_eye[0] and right_ear[0] < right_eye[0]:
+    # Reject small tilts and head turns
+    if eye_dist > 0.35 * shoulder_dist:
+        return False
+
+    # Ensure shoulders are not vertically misaligned (improper posture)
+    if shoulder_height_diff > 40:  # pixels
+        return False
+
+    # Check if head center shifted significantly from shoulder center
+    if abs(head_center_x - shoulder_center_x) > 60:
         return True
 
     return False
+
+
 
 malpractice = 0
 video_control = 0
@@ -168,7 +181,7 @@ while cap.isOpened():
         if video_control == 0:
             video_control = 1
             fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-            out = cv2.VideoWriter("output.mp4", fourcc, 30, (FRAME_WIDTH, FRAME_HEIGHT))
+            out = cv2.VideoWriter("output_leaning.mp4", fourcc, 30, (FRAME_WIDTH, FRAME_HEIGHT))
         out.write(frame)
 
     # If no leaning in this frame => check if we should finalize
@@ -192,11 +205,11 @@ while cap.isOpened():
             if video_control == 1:
                 out.release()
 
-            shutil.copy("output.mp4", destination_path)
+            shutil.copy("output_leaning.mp4", destination_path)
 
             # If client, also scp to remote
             if IS_CLIENT:
-                scp.put("output.mp4", destination_path)
+                scp.put("output_leaning.mp4", destination_path)
 
             # Insert detection event in DB
             sql = """

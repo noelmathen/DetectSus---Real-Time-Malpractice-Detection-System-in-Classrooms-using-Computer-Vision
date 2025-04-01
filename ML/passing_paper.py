@@ -17,7 +17,7 @@ if IS_CLIENT:
 # ========================
 # CONFIGURABLE VARIABLES
 # ========================
-USE_CAMERA = False
+USE_CAMERA = True
 CAMERA_INDEX = 1
 VIDEO_PATH = "test_videos/Passing_Paper.mp4"
 
@@ -94,46 +94,50 @@ def calculate_distance(p1, p2):
     return np.linalg.norm(np.array(p1) - np.array(p2))
 
 def detect_passing_paper(wrists):
-    """
-    Detect if any two students are passing a paper
-    based on wrist proximity. If distance < threshold => passing.
-    Returns (passing_detected, close_pairs).
-    - passing_detected: bool
-    - close_pairs: list of tuples (i, j, wrist_idx1, wrist_idx2)
-      indicating which specific wrists are under threshold
-    """
-    threshold = 100
+    threshold = 130                 # Wrist-to-wrist distance threshold
+    min_self_wrist_dist = 100       # Ignore people whose own wrists are too close
+    max_vertical_diff = 100         # Max allowed Y-axis difference for a pair
+
     close_pairs = []
     passing_detected = False
 
     for i in range(len(wrists)):
-        host = wrists[i]  # e.g. [left_wrist, right_wrist]
+        host = wrists[i]  # [left_wrist, right_wrist]
         host_w1, host_w2 = host[0], host[1]
 
-        for j in range(i+1, len(wrists)):
-            # Avoid re-checking same pair in reverse
-            other = wrists[j]  # e.g. [left_wrist, right_wrist]
+        # Skip if person's own wrists are too close (self-interaction)
+        if calculate_distance(host_w1, host_w2) < min_self_wrist_dist:
+            continue
+
+        for j in range(i + 1, len(wrists)):
+            other = wrists[j]
             wrist1, wrist2 = other[0], other[1]
 
-            # Distances
-            dist1 = (calculate_distance(host_w1, wrist1)
-                     if host_w1[0] != 0.0 and wrist1[0] != 0.0 else threshold + 100)
-            dist2 = (calculate_distance(host_w1, wrist2)
-                     if host_w1[0] != 0.0 and wrist2[0] != 0.0 else threshold + 100)
-            dist3 = (calculate_distance(host_w2, wrist1)
-                     if host_w2[0] != 0.0 and wrist1[0] != 0.0 else threshold + 100)
-            dist4 = (calculate_distance(host_w2, wrist2)
-                     if host_w2[0] != 0.0 and wrist2[0] != 0.0 else threshold + 100)
+            # Check all 4 pairwise distances between host and other
+            pairings = [
+                (host_w1, wrist1, (0, 0)),
+                (host_w1, wrist2, (0, 1)),
+                (host_w2, wrist1, (1, 0)),
+                (host_w2, wrist2, (1, 1))
+            ]
 
-            for dist_val, (hw_idx, w_idx) in zip(
-                [dist1, dist2, dist3, dist4],
-                [(0, 0), (0, 1), (1, 0), (1, 1)]
-            ):
-                if dist_val < threshold:
+            for w_a, w_b, (hw_idx, w_idx) in pairings:
+                # Skip if either wrist is invalid
+                if w_a[0] == 0.0 or w_b[0] == 0.0:
+                    continue
+
+                # Skip if vertical Y-difference is too large
+                if abs(w_a[1] - w_b[1]) > max_vertical_diff:
+                    continue
+
+                dist = calculate_distance(w_a, w_b)
+                if dist < threshold:
                     close_pairs.append((i, j, hw_idx, w_idx))
                     passing_detected = True
 
     return passing_detected, close_pairs
+
+
 
 # ========================
 # MAIN LOOP
@@ -261,10 +265,10 @@ while cap.isOpened():
             timestamp = now_save.strftime("%Y-%m-%d_%H-%M-%S")
             proof_filename = f"output_{timestamp}.mp4"
             destination_path = os.path.join(MEDIA_DIR, proof_filename)
-            shutil.copy("output.mp4", destination_path)
+            shutil.copy("output_passingpaper.mp4", destination_path)
 
             if IS_CLIENT:
-                scp.put("output.mp4", destination_path)
+                scp.put("output_passingpaper.mp4", destination_path)
 
             sql = """
                 INSERT INTO app_malpraticedetection (date, time, malpractice, proof, lecture_hall_id)
@@ -288,7 +292,7 @@ while cap.isOpened():
             video_control = 1
             timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-            out = cv2.VideoWriter("output.mp4", fourcc, 30, (FRAME_WIDTH, FRAME_HEIGHT))
+            out = cv2.VideoWriter("output_passingpaper.mp4", fourcc, 30, (FRAME_WIDTH, FRAME_HEIGHT))
         out.write(frame)
 
     cv2.imshow("Exam Monitoring", frame)

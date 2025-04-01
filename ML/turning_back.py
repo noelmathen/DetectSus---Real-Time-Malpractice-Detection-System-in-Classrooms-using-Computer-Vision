@@ -141,7 +141,7 @@ while cap.isOpened():
         if video_control == 0:
             video_control = 1
             fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-            out = cv2.VideoWriter("output.mp4", fourcc, 30, (FRAME_WIDTH, FRAME_HEIGHT))
+            out = cv2.VideoWriter("output_turningback.mp4", fourcc, 30, (FRAME_WIDTH, FRAME_HEIGHT))
         out.write(frame)
 
     if True not in turning_back_check:
@@ -160,10 +160,10 @@ while cap.isOpened():
             timestamp = now_save.strftime("%Y-%m-%d_%H-%M-%S")
             proof_filename = f"output_{timestamp}.mp4"
             destination_path = os.path.join(MEDIA_DIR, proof_filename)
-            shutil.copy("output.mp4", destination_path)
+            shutil.copy("output_turningback.mp4", destination_path)
 
             if IS_CLIENT:
-                scp.put("output.mp4", destination_path)
+                scp.put("output_turningback.mp4", destination_path)
 
             sql = """
                 INSERT INTO app_malpraticedetection (date, time, malpractice, proof, lecture_hall_id)

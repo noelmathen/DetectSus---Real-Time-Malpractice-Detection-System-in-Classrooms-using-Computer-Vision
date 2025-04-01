@@ -148,7 +148,7 @@
             {% if request.user.teacherprofile.profile_picture %}
               <img src="{{ request.user.teacherprofile.profile_picture.url }}" class="profile-picture" alt="Profile Picture">
             {% else %}
-              <img src="{% static 'img/default_profile.png' %}" class="profile-picture" alt="Default Picture">
+              <img src="{% static 'img/default_profile.jpeg' %}" class="profile-picture" alt="Default Picture">
             {% endif %}
             <div>
               {% if request.user.is_superuser %}
