@@ -160,6 +160,9 @@ while cap.isOpened():
     overlay_text = f"{day_str} | {date_str} | {time_display}"
     cv2.putText(frame, overlay_text, (50, 100),
                 cv2.FONT_HERSHEY_DUPLEX, 1.1, (255, 255, 255), 2, cv2.LINE_AA)
+    lecture_hall_name = f"{LECTURE_HALL_NAME} | {BUILDING}"
+    cv2.putText(frame, lecture_hall_name, (50, FRAME_HEIGHT - 50),
+            cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
 
     # YOLO Pose
     results = pose_model(frame)

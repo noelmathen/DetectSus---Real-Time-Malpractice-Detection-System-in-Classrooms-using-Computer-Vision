@@ -114,6 +114,9 @@ while cap.isOpened():
     time_display = f"{hour_12}:{minute_str}:{second_str} {ampm}"
     overlay_text = f"{day_str} | {date_str} | {time_display}"
     cv2.putText(frame, overlay_text, (50, 100), cv2.FONT_HERSHEY_DUPLEX, 1.1, (255,255,255), 2, cv2.LINE_AA)
+    lecture_hall_name = f"{LECTURE_HALL_NAME} | {BUILDING}"
+    cv2.putText(frame, lecture_hall_name, (50, FRAME_HEIGHT - 50),
+            cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
 
     for result in pose_results:
         keypoints = result.keypoints.xy.cpu().numpy() if result.keypoints is not None else []

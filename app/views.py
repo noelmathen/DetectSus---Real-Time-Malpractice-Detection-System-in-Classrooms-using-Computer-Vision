@@ -59,7 +59,7 @@ def teacher_register(request):
         profile.save()
 
         # return redirect('login')  # Or any success page
-    return render(request, 'teacher_register.html')
+    return render(request, 'login.html')
 
 
 
