@@ -1,0 +1,100 @@
+<!-- run_cameras.html -->
+{% include 'header.html' %}
+{% load static %}
+
+<style>
+  body {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e0e0e0 100%);
+    font-family: 'Poppins', sans-serif;
+  }
+
+  .script-container {
+    margin-top: 80px;
+    margin-bottom: 60px;
+  }
+
+  .script-card {
+    background-color: #ffffff;
+    border-radius: 12px;
+    padding: 40px 30px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+  }
+
+  .script-card:hover {
+    transform: translateY(-5px);
+  }
+
+  .script-heading {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #333;
+    text-align: center;
+    margin-bottom: 30px;
+    position: relative;
+  }
+
+  .script-heading::after {
+    content: "";
+    display: block;
+    width: 80px;
+    height: 4px;
+    background-color: #28a745;
+    margin: 12px auto 0;
+    border-radius: 10px;
+  }
+
+  .run-btn {
+    font-size: 1.1rem;
+    font-weight: 600;
+    padding: 14px;
+    border-radius: 8px;
+    transition: background-color 0.3s ease;
+  }
+
+  .run-btn:hover {
+    background-color: #218838;
+  }
+
+  .description {
+    font-size: 1rem;
+    color: #555;
+    margin-bottom: 25px;
+    text-align: center;
+  }
+  .topbar,
+  .navbar {
+    font-family: 'Open Sans', sans-serif !important;
+    /* You can add other header-specific rules if needed, e.g.: */
+    background-color: inherit !important;
+    color: inherit !important;
+  }
+
+  /* Optionally, scope page-specific styles so they do not affect the header */
+  .main-content {
+    /* Page-specific styling (e.g., for login or registration content) */
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(135deg, #edf2f7 0%, #cfd9df 100%);
+  }
+</style>
+
+<div class="container script-container">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="script-card">
+        <h2 class="script-heading">Run Cameras</h2>
+
+        <p class="description">
+          Trigger all 3 monitoring scripts on the connected client laptops using the button below.
+        </p>
+
+        <form method="POST" action="{% url 'trigger_camera_scripts' %}">
+          {% csrf_token %}
+          <button class="btn btn-success btn-block run-btn" type="submit">
+            🚀 Run Camera Scripts on All Clients
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

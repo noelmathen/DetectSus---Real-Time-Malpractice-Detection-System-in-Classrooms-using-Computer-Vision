@@ -18,7 +18,9 @@ from .forms import EditProfileForm, TeacherProfileForm
 from django.contrib import messages
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth import update_session_auth_hash
-
+from django.contrib.admin.views.decorators import staff_member_required
+from .utils import ssh_run_script
+import threading
 
 # Global stop event
 stop_event = Event()
@@ -75,6 +77,8 @@ def addlogin(request):
             return redirect('index')
         else:
             return render(request, 'login.html', {'error': 'Invalid credentials'})
+
+
 
 def login(request):
     return render(request,'login.html')
@@ -181,7 +185,6 @@ def malpractice_log(request):
 
 
 
-
 @csrf_exempt
 @login_required
 @user_passes_test(is_admin)
@@ -261,6 +264,7 @@ def review_malpractice(request):
     except Exception as e:
         print(f"[EXCEPTION] Unexpected error in review_malpractice: {e}")
         return JsonResponse({'success': False, 'error': 'Internal server error'})
+
 
 
 @login_required
@@ -347,3 +351,55 @@ def view_teachers(request):
 
 
 
+@login_required
+@user_passes_test(is_admin)
+def run_cameras_page(request):
+    return render(request, 'run_cameras.html')
+
+
+
+@login_required
+@user_passes_test(is_admin)
+def trigger_camera_scripts(request):
+    if request.method == 'POST':
+        client_configs = [
+            {
+                "name": "Client 1 (Prinz Laptop)",
+                "ip": "192.168.0.101",
+                "username": "client1",
+                "password": "password1",
+                "script_path": "/home/client1/Desktop/DetectSus/scripts/top.py"
+            },
+            {
+                "name": "Client 2 (Front View)",
+                "ip": "192.168.0.102",
+                "username": "client2",
+                "password": "password2",
+                "script_path": "/home/client2/Desktop/DetectSus/scripts/front.py"
+            },
+            {
+                "name": "Client 3 (Top-Corner View)",
+                "ip": "192.168.0.103",
+                "username": "client3",
+                "password": "password3",
+                "script_path": "/home/client3/Desktop/DetectSus/scripts/top_corner.py"
+            }
+        ]
+
+        def run_on_client(config):
+            success, output = ssh_run_script(
+                config["ip"],
+                config["username"],
+                config["password"],
+                config["script_path"]
+            )
+            print(f"[{config['name']}]: {output if success else 'Error occurred.'}")
+
+        for config in client_configs:
+            threading.Thread(target=run_on_client, args=(config,)).start()
+
+        return JsonResponse({'status': 'started'})
+
+
+
+        

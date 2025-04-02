@@ -7,8 +7,8 @@ import mysql.connector
 from datetime import datetime
 from ultralytics import YOLO
 
-# If running as client, use Paramiko + SCP for SSH connection
-IS_CLIENT = False
+# If running as client, import paramiko + scp
+IS_CLIENT = True  # Change to True if you're on the client
 
 if IS_CLIENT:
     import paramiko
@@ -22,9 +22,8 @@ CAMERA_INDEX = 1
 VIDEO_PATH = "test_videos/Top_Corner.mp4"
 
 LECTURE_HALL_NAME = "LH2"
-BUILDING = "Main Building"
+BUILDING = "KE Block"
 
-# Common DB credentials
 DB_USER = "root"
 DB_PASSWORD = ""
 DB_NAME = "exam_monitoring"
@@ -33,29 +32,31 @@ FRAME_WIDTH = 1280
 FRAME_HEIGHT = 720
 
 POSE_MODEL_PATH = "yolov8n-pose.pt"
-MEDIA_DIR = "../media/"
+MEDIA_DIR = "../media/"  # Where the final proof files go
 
-# Thresholds for finalizing each action
-TURNING_BACK_THRESHOLD = 10
+# Thresholds for consecutive frames
+TURNING_THRESHOLD = 10
 HAND_RAISE_THRESHOLD = 5
 
+# The DB table will store distinct action strings
+TURNING_BACK_ACTION = "Turning Back"
+HAND_RAISE_ACTION = "Hand Raised"
 # ========================
-# SSH / DB Config
+
+# ========================
+# SSH CONFIG (Only if client)
 # ========================
 if IS_CLIENT:
-    hostname = "192.168.147.145"  # Host system IP
+    hostname = "192.168.60.9"
     username = "SHRUTI S"
     password_ssh = "1234shibu"
 
-    # SSH connection setup
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     ssh.connect(hostname, port=22, username=username, password=password_ssh)
-
-    # SCP connection setup
     scp = SCPClient(ssh.get_transport())
 
-    # Remote DB connection from client
+    # Remote DB from client
     db = mysql.connector.connect(
         host=hostname,
         port=3306,
@@ -64,7 +65,7 @@ if IS_CLIENT:
         database=DB_NAME
     )
 else:
-    # Local DB connection on host
+    # Local DB
     db = mysql.connector.connect(
         host="localhost",
         user=DB_USER,
@@ -75,10 +76,24 @@ else:
 cursor = db.cursor()
 
 # ========================
-# HELPER FUNCTIONS
+# Load YOLOv8 pose model
+# ========================
+pose_model = YOLO(POSE_MODEL_PATH)
+
+# ========================
+# Video Source
+# ========================
+cap = cv2.VideoCapture(CAMERA_INDEX if USE_CAMERA else VIDEO_PATH)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
+
+# ========================
+# UTILITY FUNCTIONS
 # ========================
 def is_turning_back(kp):
-    """Check if student is turning back using the first 7 keypoints (nose, eyes, ears, shoulders)."""
+    """
+    Basic check for turning back using nose, eyes, ears, shoulders.
+    """
     if kp is None or len(kp) < 7:
         return False
 
@@ -88,12 +103,13 @@ def is_turning_back(kp):
 
     eye_dist = abs(l_eye[0] - r_eye[0])
     shoulder_dist = abs(l_shoulder[0] - r_shoulder[0])
-    return eye_dist < 0.4 * shoulder_dist and l_ear[0] > l_eye[0] and r_ear[0] < r_eye[0]
+    return (eye_dist < 0.4 * shoulder_dist
+            and l_ear[0] > l_eye[0]
+            and r_ear[0] < r_eye[0])
 
 def is_hand_raised(kp):
     """
-    Detect if a student is raising their hand based on keypoint positions:
-    We check the region 5:11 => (Shoulders, Elbows, Wrists).
+    Basic check for hand raise using shoulders, elbows, wrists => indices 5..10.
     """
     if kp is None or len(kp) < 11:
         return False
@@ -103,47 +119,36 @@ def is_hand_raised(kp):
         return False
 
     threshold = min(l_shoulder[1], r_shoulder[1]) + 30
-
-    # If either wrist is above shoulders
-    if l_wrist[1] < threshold or r_wrist[1] < threshold:
-        return True
-    return False
+    return (l_wrist[1] < threshold) or (r_wrist[1] < threshold)
 
 # ========================
-# LOAD MODEL / CAPTURE
+# MALPRACTICE STATE
 # ========================
-pose_model = YOLO(POSE_MODEL_PATH)
-cap = cv2.VideoCapture(CAMERA_INDEX if USE_CAMERA else VIDEO_PATH)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
+turning_in_progress = False
+turning_frames = 0
+turning_video = None
+turning_recording = False
+
+hand_in_progress = False
+hand_frames = 0
+hand_video = None
+hand_recording = False
 
 # ========================
-# PER-ACTION TRACKING
+# MAIN LOOP
 # ========================
-turn_malpractice = 0
-turn_video_ctrl = 0
-
-hand_malpractice = 0
-hand_video_ctrl = 0
-
-turn_out = None
-hand_out = None
-
 while cap.isOpened():
     ret, frame = cap.read()
     if not ret:
         break
 
     frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
-    pose_results = pose_model(frame)
 
-    # -------------
-    # Date/Time + Lecture Hall Overlay
-    # -------------
+    # 1) Overlays for date/time + lecture hall
     now = datetime.now()
     day_str = now.strftime('%a')
     date_str = now.strftime('%d-%m-%Y')
-    hour_12 = now.strftime('%I')  # 12-hour format
+    hour_12 = now.strftime('%I')  # 12-hour
     minute_str = now.strftime('%M')
     second_str = now.strftime('%S')
     ampm = now.strftime('%p').lower()
@@ -156,174 +161,194 @@ while cap.isOpened():
     cv2.putText(frame, hall_text, (50, FRAME_HEIGHT - 50),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
 
-    # Flags if we saw turning or hand raise in this frame
-    turn_in_frame = False
-    hand_in_frame = False
+    # 2) YOLO Pose inference
+    results = pose_model(frame)
 
-    for result in pose_results:
-        keypoints = result.keypoints.xy.cpu().numpy() if result.keypoints is not None else []
-        for kp in keypoints:
-            # 1) Check turning
-            turning = is_turning_back(kp)
-            # 2) Check hand raise
-            hraise = is_hand_raised(kp)
+    # We'll track whether we saw turning or hand-raise in the current frame
+    turning_this_frame = False
+    hand_this_frame = False
 
-            if turning:
-                turn_in_frame = True
-                turn_malpractice += 1
-            if hraise:
-                hand_in_frame = True
-                hand_malpractice += 1
+    # For coloring keypoints, we do multiple passes
+    for result in results:
+        keypoints_arr = result.keypoints.xy.cpu().numpy() if result.keypoints else []
 
-            # Color keypoints
-            # Priority: turning back => red, else if hand raise => blue, else => green
-            if turning:
-                # Mark first 6 keypoints in red
+        for kp in keypoints_arr:
+            # 2a) Check turning
+            if is_turning_back(kp):
+                turning_this_frame = True
+                # Mark 1..6 keypoints => red
                 for x, y in kp[:6]:
                     cv2.circle(frame, (int(x), int(y)), 5, (0, 0, 255), -1)
-            elif hraise:
-                # Mark relevant keypoints in blue (shoulders to wrists)
+            else:
+                # Mark them green if not turning
+                for x, y in kp[:6]:
+                    cv2.circle(frame, (int(x), int(y)), 5, (0, 255, 0), -1)
+
+            # 2b) Check hand raise
+            if is_hand_raised(kp) and not turning_this_frame:
+                # We only color them blue if not turning (since turning has priority for those same points).
+                hand_this_frame = True
                 for x, y in kp[6:11]:
                     cv2.circle(frame, (int(x), int(y)), 5, (255, 0, 0), -1)
             else:
-                # Mark these in green
-                for x, y in kp[:11]:
-                    cv2.circle(frame, (int(x), int(y)), 5, (0, 255, 0), -1)
+                # Mark them green if no hand raise
+                # but only if we haven't marked them red for turning
+                if not turning_this_frame:
+                    for x, y in kp[6:11]:
+                        cv2.circle(frame, (int(x), int(y)), 5, (0, 255, 0), -1)
 
-            # Mark the rest in green
-            if len(kp) > 11:
-                for x, y in kp[11:]:
-                    cv2.circle(frame, (int(x), int(y)), 5, (0, 255, 0), -1)
+            # Additional keypoints (beyond 11)
+            # We'll keep them green if not turning, not hand-raise, etc.
+            # If turning or hand raise => we haven't changed them, so let's keep them green
+            for x, y in kp[11:]:
+                cv2.circle(frame, (int(x), int(y)), 5, (0, 255, 0), -1)
 
-    # If turning in this frame => show red text up top
-    if turn_in_frame:
-        cv2.putText(frame, "Turning Back!", (850, 100),
+    # 3) Update turning_in_progress
+    if turning_this_frame:
+        if not turning_in_progress:
+            turning_in_progress = True
+            turning_frames = 1
+            # Start recording if not already
+            if not turning_recording:
+                turning_recording = True
+                fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+                turning_video = cv2.VideoWriter("output_turningback.mp4", fourcc, 30, (FRAME_WIDTH, FRAME_HEIGHT))
+        else:
+            turning_frames += 1
+
+        # Red message top-right
+        cv2.putText(frame, TURNING_BACK_ACTION + "!", (850, 100),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
+    else:
+        # If we had a turning event, finalize if threshold is met
+        if turning_in_progress:
+            turning_in_progress = False
+            if turning_frames >= TURNING_THRESHOLD:
+                # Finalize => rename, DB log
+                if turning_recording and turning_video:
+                    turning_video.release()
 
-    # If hand raise in this frame => show blue text slightly below turning's text
-    if hand_in_frame:
-        cv2.putText(frame, "Hand Raised!", (850, 140),
+                now_save = datetime.now()
+                date_db = now_save.date().isoformat()
+                time_db = now_save.time().strftime('%H:%M:%S')
+
+                # Lecture hall ID
+                cursor.execute(
+                    "SELECT id FROM app_lecturehall WHERE hall_name=%s AND building=%s LIMIT 1",
+                    (LECTURE_HALL_NAME, BUILDING)
+                )
+                hall_result = cursor.fetchone()
+                hall_id = hall_result[0] if hall_result else None
+
+                timestamp = now_save.strftime("%Y-%m-%d_%H-%M-%S")
+                proof_filename = f"output_turningback_{timestamp}.mp4"
+                local_temp = "output_turningback.mp4"
+                dest_path = os.path.join(MEDIA_DIR, proof_filename)
+                shutil.copy(local_temp, dest_path)
+
+                if IS_CLIENT:
+                    remote_dest = f"./Documents/Repos/DetectSus/application/application/media/{proof_filename}"
+                    scp.put(local_temp, remote_dest)
+
+                # DB insert
+                sql = """
+                    INSERT INTO app_malpraticedetection (date, time, malpractice, proof, lecture_hall_id)
+                    VALUES (%s, %s, %s, %s, %s)
+                """
+                values = (date_db, time_db, TURNING_BACK_ACTION, proof_filename, hall_id)
+                cursor.execute(sql, values)
+                db.commit()
+            else:
+                # Not enough frames => discard
+                if turning_recording and turning_video:
+                    turning_video.release()
+                if os.path.exists("output_turningback.mp4"):
+                    os.remove("output_turningback.mp4")
+
+            turning_frames = 0
+            turning_recording = False
+            turning_video = None
+
+    # 4) Update hand_in_progress
+    if hand_this_frame:
+        if not hand_in_progress:
+            hand_in_progress = True
+            hand_frames = 1
+            if not hand_recording:
+                hand_recording = True
+                fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+                hand_video = cv2.VideoWriter("output_handraise.mp4", fourcc, 30, (FRAME_WIDTH, FRAME_HEIGHT))
+        else:
+            hand_frames += 1
+
+        # Blue message below turning's line => (850, 150)
+        cv2.putText(frame, HAND_RAISE_ACTION + "!", (850, 150),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 3)
+    else:
+        # No hand in this frame => finalize if threshold is reached
+        if hand_in_progress:
+            hand_in_progress = False
+            if hand_frames >= HAND_RAISE_THRESHOLD:
+                if hand_recording and hand_video:
+                    hand_video.release()
 
-    # ================
-    # TURNING-BACK RECORDING
-    # ================
-    if turn_malpractice >= 1:
-        if turn_video_ctrl == 0:
-            turn_video_ctrl = 1
-            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-            turn_out = cv2.VideoWriter("output_turningback.mp4", fourcc, 30, (FRAME_WIDTH, FRAME_HEIGHT))
-        turn_out.write(frame)
+                now_save = datetime.now()
+                date_db = now_save.date().isoformat()
+                time_db = now_save.time().strftime('%H:%M:%S')
 
-    # If no turning => check threshold
-    if not turn_in_frame:
-        if turn_malpractice >= TURNING_BACK_THRESHOLD:
-            # finalize turning
-            if turn_video_ctrl == 1 and turn_out is not None:
-                turn_out.release()
-            now_save = datetime.now()
-            date_db = now_save.date().isoformat()
-            time_db = now_save.time().strftime('%H:%M:%S')
+                # Lecture hall ID
+                cursor.execute(
+                    "SELECT id FROM app_lecturehall WHERE hall_name=%s AND building=%s LIMIT 1",
+                    (LECTURE_HALL_NAME, BUILDING)
+                )
+                hall_result = cursor.fetchone()
+                hall_id = hall_result[0] if hall_result else None
 
-            # get hall id
-            cursor.execute(
-                "SELECT id FROM app_lecturehall WHERE hall_name = %s AND building = %s LIMIT 1",
-                (LECTURE_HALL_NAME, BUILDING)
-            )
-            hall_result = cursor.fetchone()
-            hall_id = hall_result[0] if hall_result else None
+                timestamp = now_save.strftime("%Y-%m-%d_%H-%M-%S")
+                proof_filename = f"output_handraise_{timestamp}.mp4"
+                local_temp = "output_handraise.mp4"
+                dest_path = os.path.join(MEDIA_DIR, proof_filename)
+                shutil.copy(local_temp, dest_path)
 
-            timestamp = now_save.strftime("%Y-%m-%d_%H-%M-%S")
-            proof_filename = f"turning_{timestamp}.mp4"
-            destination_path = os.path.join(MEDIA_DIR, proof_filename)
-            shutil.copy("output_turningback.mp4", destination_path)
+                if IS_CLIENT:
+                    remote_dest = f"./Documents/Repos/DetectSus/application/application/media/{proof_filename}"
+                    scp.put(local_temp, remote_dest)
 
-            if IS_CLIENT:
-                scp.put("output_turningback.mp4", destination_path)
+                # DB insert
+                sql = """
+                    INSERT INTO app_malpraticedetection (date, time, malpractice, proof, lecture_hall_id)
+                    VALUES (%s, %s, %s, %s, %s)
+                """
+                values = (date_db, time_db, HAND_RAISE_ACTION, proof_filename, hall_id)
+                cursor.execute(sql, values)
+                db.commit()
+            else:
+                # Not enough frames => discard
+                if hand_recording and hand_video:
+                    hand_video.release()
+                if os.path.exists("output_handraise.mp4"):
+                    os.remove("output_handraise.mp4")
 
-            sql = """
-                INSERT INTO app_malpraticedetection (date, time, malpractice, proof, lecture_hall_id)
-                VALUES (%s, %s, %s, %s, %s)
-            """
-            values = (date_db, time_db, "Turning Back", proof_filename, hall_id)
-            cursor.execute(sql, values)
-            db.commit()
+            hand_frames = 0
+            hand_recording = False
+            hand_video = None
 
-            turn_malpractice = 0
-            turn_video_ctrl = 0
-            turn_out = None
-        else:
-            if turn_video_ctrl == 1 and turn_out is not None:
-                turn_out.release()
-            turn_malpractice = 0
-            turn_video_ctrl = 0
-            turn_out = None
+    # If we are currently recording turning or hand, write frames
+    if turning_in_progress and turning_recording and turning_video:
+        turning_video.write(frame)
 
-    # ================
-    # HAND-RAISE RECORDING
-    # ================
-    if hand_malpractice >= 1:
-        if hand_video_ctrl == 0:
-            hand_video_ctrl = 1
-            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-            hand_out = cv2.VideoWriter("output_handraise.mp4", fourcc, 30, (FRAME_WIDTH, FRAME_HEIGHT))
-        hand_out.write(frame)
+    if hand_in_progress and hand_recording and hand_video:
+        hand_video.write(frame)
 
-    # If no hand raise => check threshold
-    if not hand_in_frame:
-        if hand_malpractice >= HAND_RAISE_THRESHOLD:
-            # finalize
-            if hand_video_ctrl == 1 and hand_out is not None:
-                hand_out.release()
-            now_save = datetime.now()
-            date_db = now_save.date().isoformat()
-            time_db = now_save.time().strftime('%H:%M:%S')
-
-            # get hall id
-            cursor.execute(
-                "SELECT id FROM app_lecturehall WHERE hall_name = %s AND building = %s LIMIT 1",
-                (LECTURE_HALL_NAME, BUILDING)
-            )
-            hall_result = cursor.fetchone()
-            hall_id = hall_result[0] if hall_result else None
-
-            timestamp = now_save.strftime("%Y-%m-%d_%H-%M-%S")
-            proof_filename = f"handraise_{timestamp}.mp4"
-            destination_path = os.path.join(MEDIA_DIR, proof_filename)
-            shutil.copy("output_handraise.mp4", destination_path)
-
-            if IS_CLIENT:
-                scp.put("output_handraise.mp4", destination_path)
-
-            sql = """
-                INSERT INTO app_malpraticedetection (date, time, malpractice, proof, lecture_hall_id)
-                VALUES (%s, %s, %s, %s, %s)
-            """
-            values = (date_db, time_db, "Hand Raised", proof_filename, hall_id)
-            cursor.execute(sql, values)
-            db.commit()
-
-            hand_malpractice = 0
-            hand_video_ctrl = 0
-            hand_out = None
-        else:
-            if hand_video_ctrl == 1 and hand_out is not None:
-                hand_out.release()
-            hand_malpractice = 0
-            hand_video_ctrl = 0
-            hand_out = None
-
-    cv2.imshow("Exam Monitoring", frame)
-    if cv2.waitKey(1) & 0xFF == ord("q"):
+    cv2.imshow("Exam Monitoring - Merged", frame)
+    if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
 cap.release()
-
-# Release any open videos
-if turn_video_ctrl == 1 and turn_out is not None:
-    turn_out.release()
-if hand_video_ctrl == 1 and hand_out is not None:
-    hand_out.release()
+if turning_recording and turning_video:
+    turning_video.release()
+if hand_recording and hand_video:
+    hand_video.release()
 
 if IS_CLIENT:
     scp.close()

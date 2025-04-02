@@ -7,17 +7,20 @@ import mysql.connector
 from datetime import datetime
 from ultralytics import YOLO
 
-# SSH flag (for client)
-IS_CLIENT = False
+# If running on the client, import paramiko + scp
+IS_CLIENT = False  # Change to False if running on the host
 
 if IS_CLIENT:
     import paramiko
     from scp import SCPClient
 
-# CONFIG
-USE_CAMERA = True
+# ========================
+# CONFIGURABLE VARIABLES
+# ========================
+USE_CAMERA = False
 CAMERA_INDEX = 1
-VIDEO_PATH = "test_videos/Front.mp4"
+# VIDEO_PATH = "test_videos/Front.mp4"
+VIDEO_PATH = "test_videos/Passing_Paper.mp4"
 
 LECTURE_HALL_NAME = "LH2"
 BUILDING = "KE Block"
@@ -31,168 +34,415 @@ FRAME_HEIGHT = 720
 
 POSE_MODEL_PATH = "yolov8n-pose.pt"
 MEDIA_DIR = "../media/"
-LEANING_THRESHOLD = 3
-PASSING_THRESHOLD = 3
 
-# SSH setup
+# Thresholds
+LEANING_THRESHOLD = 3      # consecutive frames needed for leaning
+PASSING_THRESHOLD = 3      # consecutive frames needed for passing paper
+
+# Action strings
+LEANING_ACTION = "Leaning"
+PASSING_ACTION = "Passing Paper"
+# ========================
+
+# ========================
+# SSH CONFIG (Only if client)
+# ========================
 if IS_CLIENT:
-    hostname = "192.168.147.145"
+    hostname = "172.16.30.203"
     username = "SHRUTI S"
     password_ssh = "1234shibu"
 
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     ssh.connect(hostname, port=22, username=username, password=password_ssh)
+
     scp = SCPClient(ssh.get_transport())
 
     db = mysql.connector.connect(
-        host=hostname, port=3306,
-        user=DB_USER, password=DB_PASSWORD, database=DB_NAME
+        host=hostname,
+        port=3306,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        database=DB_NAME
     )
 else:
+    # Local DB if host
     db = mysql.connector.connect(
-        host="localhost", user=DB_USER,
-        password=DB_PASSWORD, database=DB_NAME
+        host="localhost",
+        user=DB_USER,
+        password=DB_PASSWORD,
+        database=DB_NAME
     )
+
 cursor = db.cursor()
 
+# ========================
+# Load YOLOv8 Pose Model
+# ========================
 pose_model = YOLO(POSE_MODEL_PATH)
+
+# ========================
+# Video Source
+# ========================
 cap = cv2.VideoCapture(CAMERA_INDEX if USE_CAMERA else VIDEO_PATH)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
 
-# ===================== HELPERS =====================
+# ========================
+# HELPER FUNCTIONS
+# ========================
+def is_leaning(keypoints):
+    """
+    (From leaning.py)
+    Improved leaning detection by comparing
+    head & shoulder center, ignoring small tilts.
+    """
+    if keypoints is None or len(keypoints) < 7:
+        return False
+
+    nose, l_eye, r_eye, l_ear, r_ear, l_shoulder, r_shoulder = keypoints[:7]
+    if any(pt is None for pt in [nose, l_eye, r_eye, l_ear, r_ear, l_shoulder, r_shoulder]):
+        return False
+
+    eye_dist = abs(l_eye[0] - r_eye[0])
+    shoulder_dist = abs(l_shoulder[0] - r_shoulder[0])
+    shoulder_height_diff = abs(l_shoulder[1] - r_shoulder[1])
+    head_center_x = (l_eye[0] + r_eye[0]) / 2
+    shoulder_center_x = (l_shoulder[0] + r_shoulder[0]) / 2
+
+    if eye_dist > 0.35 * shoulder_dist:
+        return False
+    if shoulder_height_diff > 40:
+        return False
+
+    return abs(head_center_x - shoulder_center_x) > 60
+
 def calculate_distance(p1, p2):
+    """Calculate Euclidean distance between two points."""
     return np.linalg.norm(np.array(p1) - np.array(p2))
 
 def detect_passing_paper(wrists):
+    """
+    (From passing_paper.py)
+    If any pair of wrists from different people is below threshold => passing
+    """
     threshold = 130
     min_self_wrist_dist = 100
     max_vertical_diff = 100
+
     close_pairs = []
-    detected = False
+    passing_detected = False
+
     for i in range(len(wrists)):
         host = wrists[i]
+        # skip if person's own wrists are too close
         if calculate_distance(*host) < min_self_wrist_dist:
             continue
-        for j in range(i+1, len(wrists)):
+
+        for j in range(i + 1, len(wrists)):
             other = wrists[j]
-            pairs = [(host[0], other[0], (0, 0)), (host[0], other[1], (0, 1)),
-                     (host[1], other[0], (1, 0)), (host[1], other[1], (1, 1))]
-            for w1, w2, ids in pairs:
-                if w1[0] == 0.0 or w2[0] == 0.0 or abs(w1[1] - w2[1]) > max_vertical_diff:
+            pairings = [
+                (host[0], other[0], (0, 0)),
+                (host[0], other[1], (0, 1)),
+                (host[1], other[0], (1, 0)),
+                (host[1], other[1], (1, 1))
+            ]
+            for w_a, w_b, (hw_idx, w_idx) in pairings:
+                if w_a[0] == 0.0 or w_b[0] == 0.0:
                     continue
-                if calculate_distance(w1, w2) < threshold:
-                    close_pairs.append((i, j, *ids))
-                    detected = True
-    return detected, close_pairs
+                if abs(w_a[1] - w_b[1]) > max_vertical_diff:
+                    continue
 
-def is_leaning(kp):
-    if len(kp) < 7: return False
-    nose, l_eye, r_eye, l_ear, r_ear, l_sh, r_sh = kp[:7]
-    if any(pt is None for pt in [nose, l_eye, r_eye, l_ear, r_ear, l_sh, r_sh]): return False
-    eye_dist = abs(l_eye[0] - r_eye[0])
-    shoulder_dist = abs(l_sh[0] - r_sh[0])
-    shoulder_height_diff = abs(l_sh[1] - r_sh[1])
-    head_center = (l_eye[0] + r_eye[0]) / 2
-    shoulder_center = (l_sh[0] + r_sh[0]) / 2
-    if eye_dist > 0.35 * shoulder_dist or shoulder_height_diff > 40: return False
-    return abs(head_center - shoulder_center) > 60
+                dist = calculate_distance(w_a, w_b)
+                if dist < threshold:
+                    close_pairs.append((i, j, hw_idx, w_idx))
+                    passing_detected = True
 
-# ===================== STATE =====================
-mal_leans, mal_passes = 0, 0
-out_lean, out_pass = None, None
-vc_lean, vc_pass = 0, 0
+    return passing_detected, close_pairs
 
+# ========================
+# PER-EVENT VARIABLES
+# ========================
+lean_in_progress = False
+lean_frames = 0
+lean_recording = False
+lean_video = None
+
+passing_in_progress = False
+passing_frames = 0
+passing_recording = False
+passing_video = None
+
+# ========================
+# MAIN LOOP
+# ========================
 while cap.isOpened():
     ret, frame = cap.read()
-    if not ret: break
-    frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
-    now = datetime.now()
-    timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
-    day = now.strftime('%a')
-    date = now.strftime('%d-%m-%Y')
-    time_disp = now.strftime('%I:%M:%S %p').lower()
-    overlay = f"{day} | {date} | {time_disp}"
-    cv2.putText(frame, overlay, (50, 100), cv2.FONT_HERSHEY_DUPLEX, 1.1, (255,255,255), 2)
-    cv2.putText(frame, f"{LECTURE_HALL_NAME} | {BUILDING}", (50, FRAME_HEIGHT - 50),
-                cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
+    if not ret:
+        break
 
+    frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
+
+    # Overlays: date/time, lecture hall
+    now = datetime.now()
+    day_str = now.strftime('%a')
+    date_str = now.strftime('%d-%m-%Y')
+    hour_12 = now.strftime('%I')   # 12-hour
+    minute_str = now.strftime('%M')
+    second_str = now.strftime('%S')
+    ampm = now.strftime('%p').lower()
+    time_display = f"{hour_12}:{minute_str}:{second_str} {ampm}"
+    overlay_text = f"{day_str} | {date_str} | {time_display}"
+    cv2.putText(frame, overlay_text, (50, 100),
+                cv2.FONT_HERSHEY_DUPLEX, 1.1, (255,255,255), 2, cv2.LINE_AA)
+
+    hall_text = f"{LECTURE_HALL_NAME} | {BUILDING}"
+    cv2.putText(frame, hall_text, (50, FRAME_HEIGHT - 50),
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+
+    # YOLO pose
     results = pose_model(frame)
-    all_keypoints, wrists = [], []
+
+    # 1) Leaning detection
+    leaning_this_frame = False
+    # 2) Passing detection
+    passing_this_frame = False
+
+    # For passing detection => gather wrists
+    wrist_positions = []
+    all_keypoints = []  # store for drawing
 
     for r in results:
-        kpts = r.keypoints.xy.cpu().numpy() if r.keypoints is not None else []
+        kpts = r.keypoints.xy.cpu().numpy() if r.keypoints else []
+        if len(kpts) > 0:
+            all_keypoints.append(kpts)
+            # wrists for passing
+            for kp in kpts:
+                if len(kp) >= 11:
+                    wrist_positions.append([kp[9], kp[10]])
+
+    # Now check passing
+    passing_detected, close_pairs = detect_passing_paper(wrist_positions)
+    if passing_detected:
+        passing_this_frame = True
+
+    # We'll do a separate pass for leaning
+    for r in results:
+        kpts = r.keypoints.xy.cpu().numpy() if r.keypoints else []
         for kp in kpts:
-            all_keypoints.append(kp)
-            if len(kp) >= 11:
-                wrists.append([kp[9], kp[10]])
+            if is_leaning(kp):
+                leaning_this_frame = True
 
-    pass_detected, close_pairs = detect_passing_paper(wrists)
-    red_wrist_set = {(i, w) for i, j, wi, wj in close_pairs for (i, w) in [(i, wi), (j, wj)]}
+    # 3) Drawing keypoints color
+    # "Leaning => Red" "Passing => Blue"
+    # We'll highlight only the wrists for passing, but if the same person is leaning, head/torso is red
+    # we keep the code minimal changes to coloring
+    # For passing, we have close_pairs => so we color relevant wrists in blue
+    red_color = (0, 0, 255)
+    blue_color = (255, 0, 0)
+    green_color = (0, 255, 0)
 
-    any_lean = False
-    for idx, kp in enumerate(all_keypoints):
-        is_lean = is_leaning(kp)
-        color = (0, 0, 255) if is_lean else (0, 255, 0)
-        for i, (x, y) in enumerate(kp):
-            if (idx, i - 9) in red_wrist_set and i in [9, 10]:
-                cv2.circle(frame, (int(x), int(y)), 5, (255, 0, 0), -1)  # Blue for passing paper
-            elif is_lean and i < 6:
-                cv2.circle(frame, (int(x), int(y)), 5, (0, 0, 255), -1)
+    # Build a set for passing wrists
+    passing_wrist_set = set()
+    for (i, j, hw_idx, w_idx) in close_pairs:
+        passing_wrist_set.add((i, hw_idx))
+        passing_wrist_set.add((j, w_idx))
+
+    # We'll keep an index for "wrist_positions" vs. "all_keypoints" approach
+    # The simplest approach is to track "person_index" as we go
+    person_index = 0
+
+    for kpts in all_keypoints:
+        for kp in kpts:
+            # We'll check if the person is leaning => if so, color first 6 points red
+            # else color them green
+            if is_leaning(kp):
+                for x, y in kp[:6]:
+                    cv2.circle(frame, (int(x), int(y)), 5, red_color, -1)
             else:
-                cv2.circle(frame, (int(x), int(y)), 5, (0, 255, 0), -1)
-        if is_lean: any_lean = True
+                for x, y in kp[:6]:
+                    cv2.circle(frame, (int(x), int(y)), 5, green_color, -1)
 
-    # Show detections
-    if any_lean:
-        mal_leans += 1
-        cv2.putText(frame, "Leaning!", (850, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-        if vc_lean == 0:
-            out_lean = cv2.VideoWriter("output_leaning.mp4", cv2.VideoWriter_fourcc(*"mp4v"), 30, (FRAME_WIDTH, FRAME_HEIGHT))
-            vc_lean = 1
-        out_lean.write(frame)
+            # For passing, we color only wrists in blue if in passing_wrist_set
+            # Default them green if not flagged
+            # kp[9], kp[10]
+            if len(kp) >= 11:
+                # left wrist => (person_index, 0)
+                # right wrist => (person_index, 1)
+                lx, ly = kp[9]
+                rx, ry = kp[10]
 
-    if pass_detected:
-        mal_passes += 1
-        cv2.putText(frame, "Passing Paper!", (850, 150), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
-        if vc_pass == 0:
-            out_pass = cv2.VideoWriter("output_passingpaper.mp4", cv2.VideoWriter_fourcc(*"mp4v"), 30, (FRAME_WIDTH, FRAME_HEIGHT))
-            vc_pass = 1
-        out_pass.write(frame)
+                if (person_index, 0) in passing_wrist_set:
+                    cv2.circle(frame, (int(lx), int(ly)), 5, blue_color, -1)
+                else:
+                    cv2.circle(frame, (int(lx), int(ly)), 5, green_color, -1)
 
-    if not any_lean and mal_leans >= LEANING_THRESHOLD:
-        if vc_lean:
-            out_lean.release()
-            proof = f"output_{timestamp}.mp4"
-            shutil.copy("output_leaning.mp4", os.path.join(MEDIA_DIR, proof))
-            cursor.execute("SELECT id FROM app_lecturehall WHERE hall_name = %s AND building = %s LIMIT 1", (LECTURE_HALL_NAME, BUILDING))
-            hall_id = cursor.fetchone()[0]
-            cursor.execute("INSERT INTO app_malpraticedetection (date, time, malpractice, proof, lecture_hall_id) VALUES (%s,%s,%s,%s,%s)",
-                           (now.date().isoformat(), now.time().strftime('%H:%M:%S'), "Leaning", proof, hall_id))
-            db.commit()
-        mal_leans, vc_lean = 0, 0
+                if (person_index, 1) in passing_wrist_set:
+                    cv2.circle(frame, (int(rx), int(ry)), 5, blue_color, -1)
+                else:
+                    cv2.circle(frame, (int(rx), int(ry)), 5, green_color, -1)
 
-    if not pass_detected and mal_passes >= PASSING_THRESHOLD:
-        if vc_pass:
-            out_pass.release()
-            proof = f"output_{timestamp}.mp4"
-            shutil.copy("output_passingpaper.mp4", os.path.join(MEDIA_DIR, proof))
-            cursor.execute("SELECT id FROM app_lecturehall WHERE hall_name = %s AND building = %s LIMIT 1", (LECTURE_HALL_NAME, BUILDING))
-            hall_id = cursor.fetchone()[0]
-            cursor.execute("INSERT INTO app_malpraticedetection (date, time, malpractice, proof, lecture_hall_id) VALUES (%s,%s,%s,%s,%s)",
-                           (now.date().isoformat(), now.time().strftime('%H:%M:%S'), "Passing Paper", proof, hall_id))
-            db.commit()
-        mal_passes, vc_pass = 0, 0
+            # The rest keypoints (beyond 11) => keep them green
+            for x, y in kp[11:]:
+                cv2.circle(frame, (int(x), int(y)), 5, green_color, -1)
 
-    cv2.imshow("Exam Monitoring", frame)
+            person_index += 1
+
+    # 4) Show text:
+    # Leaning => red text at (850,100)
+    if leaning_this_frame:
+        cv2.putText(frame, LEANING_ACTION + "!", (850, 100),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, red_color, 3)
+
+    # Passing => blue text at (850,150)
+    if passing_this_frame:
+        cv2.putText(frame, PASSING_ACTION + "!", (850, 150),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, blue_color, 3)
+
+    # 5) Update leaning event
+    if leaning_this_frame:
+        if not lean_in_progress:
+            lean_in_progress = True
+            lean_frames = 1
+            if not lean_recording:
+                lean_recording = True
+                fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+                lean_video = cv2.VideoWriter("output_leaning.mp4", fourcc, 30, (FRAME_WIDTH, FRAME_HEIGHT))
+        else:
+            lean_frames += 1
+    else:
+        # Not leaning this frame
+        if lean_in_progress:
+            lean_in_progress = False
+            # If enough frames => finalize
+            if lean_frames >= LEANING_THRESHOLD:
+                if lean_recording and lean_video:
+                    lean_video.release()
+
+                now_save = datetime.now()
+                date_db = now_save.date().isoformat()
+                time_db = now_save.time().strftime('%H:%M:%S')
+
+                # Lecture hall ID
+                cursor.execute(
+                    "SELECT id FROM app_lecturehall WHERE hall_name=%s AND building=%s LIMIT 1",
+                    (LECTURE_HALL_NAME, BUILDING)
+                )
+                row = cursor.fetchone()
+                hall_id = row[0] if row else None
+
+                timestamp = now_save.strftime("%Y-%m-%d_%H-%M-%S")
+                local_temp = "output_leaning.mp4"
+                proof_filename = f"output_leaning_{timestamp}.mp4"
+                dest_path = os.path.join(MEDIA_DIR, proof_filename)
+                shutil.copy(local_temp, dest_path)
+
+                # If client => scp
+                if IS_CLIENT:
+                    remote_dest = f"./Documents/Repos/DetectSus/application/application/media/{proof_filename}"
+                    scp.put(local_temp, remote_dest)
+
+                # Insert DB
+                sql = """
+                    INSERT INTO app_malpraticedetection (date, time, malpractice, proof, lecture_hall_id)
+                    VALUES (%s, %s, %s, %s, %s)
+                """
+                val = (date_db, time_db, LEANING_ACTION, proof_filename, hall_id)
+                cursor.execute(sql, val)
+                db.commit()
+            else:
+                # discard
+                if lean_recording and lean_video:
+                    lean_video.release()
+                if os.path.exists("output_leaning.mp4"):
+                    os.remove("output_leaning.mp4")
+
+            lean_frames = 0
+            lean_recording = False
+            lean_video = None
+
+    # 6) Update passing event
+    if passing_this_frame:
+        if not passing_in_progress:
+            passing_in_progress = True
+            passing_frames = 1
+            if not passing_recording:
+                passing_recording = True
+                fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+                passing_video = cv2.VideoWriter("output_passingpaper.mp4", fourcc, 30, (FRAME_WIDTH, FRAME_HEIGHT))
+        else:
+            passing_frames += 1
+    else:
+        # not passing
+        if passing_in_progress:
+            passing_in_progress = False
+            if passing_frames >= PASSING_THRESHOLD:
+                if passing_recording and passing_video:
+                    passing_video.release()
+
+                now_save = datetime.now()
+                date_db = now_save.date().isoformat()
+                time_db = now_save.time().strftime('%H:%M:%S')
+
+                # lecture hall ID
+                cursor.execute(
+                    "SELECT id FROM app_lecturehall WHERE hall_name=%s AND building=%s LIMIT 1",
+                    (LECTURE_HALL_NAME, BUILDING)
+                )
+                row = cursor.fetchone()
+                hall_id = row[0] if row else None
+
+                timestamp = now_save.strftime("%Y-%m-%d_%H-%M-%S")
+                local_temp = "output_passingpaper.mp4"
+                proof_filename = f"output_passingpaper_{timestamp}.mp4"
+                dest_path = os.path.join(MEDIA_DIR, proof_filename)
+                shutil.copy(local_temp, dest_path)
+
+                # if client => scp
+                if IS_CLIENT:
+                    remote_dest = f"./Documents/Repos/DetectSus/application/application/media/{proof_filename}"
+                    scp.put(local_temp, remote_dest)
+
+                # Insert DB
+                sql = """
+                    INSERT INTO app_malpraticedetection (date, time, malpractice, proof, lecture_hall_id)
+                    VALUES (%s, %s, %s, %s, %s)
+                """
+                val = (date_db, time_db, PASSING_ACTION, proof_filename, hall_id)
+                cursor.execute(sql, val)
+                db.commit()
+            else:
+                # discard
+                if passing_recording and passing_video:
+                    passing_video.release()
+                if os.path.exists("output_passingpaper.mp4"):
+                    os.remove("output_passingpaper.mp4")
+
+            passing_frames = 0
+            passing_recording = False
+            passing_video = None
+
+    # 7) Write frames if in progress
+    if lean_in_progress and lean_recording and lean_video:
+        lean_video.write(frame)
+
+    if passing_in_progress and passing_recording and passing_video:
+        passing_video.write(frame)
+
+    cv2.imshow("Exam Monitoring - Merged Leaning & PassingPaper", frame)
     if cv2.waitKey(1) & 0xFF == ord("q"):
         break
 
 cap.release()
-if vc_lean and out_lean: out_lean.release()
-if vc_pass and out_pass: out_pass.release()
+
+# Final release if needed
+if lean_recording and lean_video:
+    lean_video.release()
+if passing_recording and passing_video:
+    passing_video.release()
+
 if IS_CLIENT:
     scp.close()
     ssh.close()
+
 cv2.destroyAllWindows()

@@ -1,4 +1,4 @@
-#passing_paper.py
+# passing_paper.py
 import cv2
 import os
 import shutil
@@ -8,7 +8,7 @@ from datetime import datetime
 from ultralytics import YOLO
 
 # If running on the client, import paramiko + scp
-IS_CLIENT = False  # Change to False if running on the host system
+IS_CLIENT = True  # Change to True if running on the client
 
 if IS_CLIENT:
     import paramiko
@@ -18,14 +18,12 @@ if IS_CLIENT:
 # CONFIGURABLE VARIABLES
 # ========================
 USE_CAMERA = True
-CAMERA_INDEX = 1
+CAMERA_INDEX = 0
 VIDEO_PATH = "test_videos/Passing_Paper.mp4"
-
 
 LECTURE_HALL_NAME = "LH2"
 BUILDING = "KE Block"
 
-# Database Credentials
 DB_USER = "root"
 DB_PASSWORD = ""
 DB_NAME = "exam_monitoring"
@@ -34,18 +32,17 @@ FRAME_WIDTH = 1280
 FRAME_HEIGHT = 720
 
 POSE_MODEL_PATH = "yolov8n-pose.pt"
-MEDIA_DIR = "../media/"
+MEDIA_DIR = "../media/"  # Host system media folder
 ACTION_NAME = "Passing Paper"
 
-# Number of consecutive frames that triggers saving proof
-PASS_THRESHOLD = 3
+PASS_THRESHOLD = 3  # Consecutive frames needed
 # ========================
 
 # ========================
-# SSH CONFIG (Only if client)
+# SSH CONFIG (Client Only)
 # ========================
 if IS_CLIENT:
-    hostname = "192.168.147.145"
+    hostname = "192.168.53.145"
     username = "SHRUTI S"
     password_ssh = "1234shibu"
 
@@ -55,16 +52,12 @@ if IS_CLIENT:
 
     scp = SCPClient(ssh.get_transport())
 
-    # Connect to remote DB from client
     db = mysql.connector.connect(
-        host=hostname,
-        port=3306,
-        user=DB_USER,
-        password=DB_PASSWORD,
+        host=hostname, port=3306,
+        user=DB_USER, password=DB_PASSWORD,
         database=DB_NAME
     )
 else:
-    # Local DB if host
     db = mysql.connector.connect(
         host="localhost",
         user=DB_USER,
@@ -94,39 +87,29 @@ def calculate_distance(p1, p2):
     return np.linalg.norm(np.array(p1) - np.array(p2))
 
 def detect_passing_paper(wrists):
-    threshold = 130                 # Wrist-to-wrist distance threshold
-    min_self_wrist_dist = 100       # Ignore people whose own wrists are too close
-    max_vertical_diff = 100         # Max allowed Y-axis difference for a pair
+    threshold = 130
+    min_self_wrist_dist = 100
+    max_vertical_diff = 100
 
     close_pairs = []
     passing_detected = False
 
     for i in range(len(wrists)):
         host = wrists[i]  # [left_wrist, right_wrist]
-        host_w1, host_w2 = host[0], host[1]
-
-        # Skip if person's own wrists are too close (self-interaction)
-        if calculate_distance(host_w1, host_w2) < min_self_wrist_dist:
+        if calculate_distance(*host) < min_self_wrist_dist:
             continue
 
         for j in range(i + 1, len(wrists)):
             other = wrists[j]
-            wrist1, wrist2 = other[0], other[1]
-
-            # Check all 4 pairwise distances between host and other
             pairings = [
-                (host_w1, wrist1, (0, 0)),
-                (host_w1, wrist2, (0, 1)),
-                (host_w2, wrist1, (1, 0)),
-                (host_w2, wrist2, (1, 1))
+                (host[0], other[0], (0, 0)),
+                (host[0], other[1], (0, 1)),
+                (host[1], other[0], (1, 0)),
+                (host[1], other[1], (1, 1))
             ]
-
             for w_a, w_b, (hw_idx, w_idx) in pairings:
-                # Skip if either wrist is invalid
                 if w_a[0] == 0.0 or w_b[0] == 0.0:
                     continue
-
-                # Skip if vertical Y-difference is too large
                 if abs(w_a[1] - w_b[1]) > max_vertical_diff:
                     continue
 
@@ -136,8 +119,6 @@ def detect_passing_paper(wrists):
                     passing_detected = True
 
     return passing_detected, close_pairs
-
-
 
 # ========================
 # MAIN LOOP
@@ -152,98 +133,68 @@ while cap.isOpened():
 
     frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
 
-    # Overlay day/date/time in top-left
+    # Overlay day/date/time
     now = datetime.now()
     day_str = now.strftime('%a')
     date_str = now.strftime('%d-%m-%Y')
-    hour_12 = now.strftime('%I')  # 12-hour format with leading zeros
+    hour_12 = now.strftime('%I')
     minute_str = now.strftime('%M')
     second_str = now.strftime('%S')
-    ampm = now.strftime('%p').lower()  # 'am' or 'pm'
+    ampm = now.strftime('%p').lower()
     time_display = f"{hour_12}:{minute_str}:{second_str} {ampm}"
     overlay_text = f"{day_str} | {date_str} | {time_display}"
     cv2.putText(frame, overlay_text, (50, 100),
                 cv2.FONT_HERSHEY_DUPLEX, 1.1, (255, 255, 255), 2, cv2.LINE_AA)
     lecture_hall_name = f"{LECTURE_HALL_NAME} | {BUILDING}"
     cv2.putText(frame, lecture_hall_name, (50, FRAME_HEIGHT - 50),
-            cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
 
     # YOLO Pose
     results = pose_model(frame)
 
     # Collect wrist positions
     wrist_positions = []
-    # Keep a separate data structure for all keypoints
-    all_keypoints = []  # Will store list of [ [ (x1, y1), (x2, y2), ...], [..], ... ]
+    all_keypoints = []
 
     for r in results:
         kpts = r.keypoints.xy.cpu().numpy() if r.keypoints is not None else []
         if len(kpts) == 0:
             continue
         all_keypoints.append(kpts)
-
         for kp in kpts:
-            if len(kp) < 11:
-                continue
-            # wrists
-            left_wrist, right_wrist = kp[9], kp[10]
-            wrist_positions.append([left_wrist, right_wrist])
+            if len(kp) >= 11:
+                wrist_positions.append([kp[9], kp[10]])
 
-    # 1) Check if passing paper
+    # Check passing
     passing_paper_detected, close_pairs = detect_passing_paper(wrist_positions)
-
-    # 2) Drawing keypoints:
-    #    - By default, color them green
-    #    - For wrists in close_pairs, color them red
-    #    - "Passing Paper!" text on the right if triggered
     if passing_paper_detected:
         malpractice += 1
         cv2.putText(frame, ACTION_NAME + "!", (850, 150),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
 
-    # Draw everything
-    # The trick is that close_pairs references the index in wrist_positions,
-    # but we need to map back to all_keypoints
-    # Approach:
-    # - We'll keep a set of (globalPersonIndex, wristIndex) for red coloring
+    # Mark wrists in red
     red_wrist_set = set()
-
     for (i, j, hw_idx, w_idx) in close_pairs:
-        # i, j => indices in wrist_positions
-        # but we must also find which "person" those wrists correspond to in all_keypoints
-        # We'll do a simple approach: we rely on the order in which we appended them.
-        # The nth "kp" in all_keypoints that had enough points to define wrists
-        # matches the nth entry in wrist_positions.
-        red_wrist_set.add((i, hw_idx))  # e.g. (0, 0) => left wrist of 1st person
-        red_wrist_set.add((j, w_idx))   # e.g. (1, 1) => right wrist of 2nd person
+        red_wrist_set.add((i, hw_idx))
+        red_wrist_set.add((j, w_idx))
 
-    # We'll have to iterate all persons again in the same sequence we appended them
-    # person_index counts how many "valid" wrist sets we've added
+    # Draw all keypoints in green by default
     person_index = 0
     for kpts in all_keypoints:
-        # kpts is an array of shape (#people, #keypoints, 2)
         for kp in kpts:
-            # By default, mark all keypoints green
             for x, y in kp:
                 cv2.circle(frame, (int(x), int(y)), 5, (0, 255, 0), -1)
-
-            # Now highlight left_wrist or right_wrist in red if in red_wrist_set
-            # This person's wrists are kp[9], kp[10]
-            # If person_index is "p", then a pair might say (p, 0) => left wrist in red
-            # or (p, 1) => right wrist in red
-            # But only do this if the person actually has 11 keypoints
+            # If we have at least 11 points, color wrists if in red_wrist_set
             if len(kp) >= 11:
-                # left wrist => (p,0), right wrist => (p,1)
                 if (person_index, 0) in red_wrist_set:
                     lx, ly = kp[9]
                     cv2.circle(frame, (int(lx), int(ly)), 5, (0, 0, 255), -1)
                 if (person_index, 1) in red_wrist_set:
                     rx, ry = kp[10]
                     cv2.circle(frame, (int(rx), int(ry)), 5, (0, 0, 255), -1)
-
             person_index += 1
 
-    # 3) If passing was not detected in this frame, check threshold
+    # If passing not detected, see if we finalize
     if not passing_paper_detected:
         if malpractice >= PASS_THRESHOLD:
             # finalize
@@ -253,29 +204,33 @@ while cap.isOpened():
             now_save = datetime.now()
             date_db = now_save.date().isoformat()
             time_db = now_save.time().strftime('%H:%M:%S')
+            timestamp = now_save.strftime("%Y-%m-%d_%H-%M-%S")
+            proof_filename = f"output_{timestamp}.mp4"
 
-            # Lecture hall ID
+            # Copy to local media folder
+            local_temp = "output_passingpaper.mp4"
+            local_dest = os.path.join(MEDIA_DIR, proof_filename)
+            shutil.copy(local_temp, local_dest)
+
+            # If client, scp to remote
+            if IS_CLIENT:
+                remote_dest = f"./Documents/Repos/DetectSus/application/application/media/{proof_filename}"
+                scp.put(local_temp, remote_dest)
+
+            # Insert into DB
             cursor.execute(
                 "SELECT id FROM app_lecturehall WHERE hall_name = %s AND building = %s LIMIT 1",
                 (LECTURE_HALL_NAME, BUILDING)
             )
-            hall_result = cursor.fetchone()
-            hall_id = hall_result[0] if hall_result else None
-
-            timestamp = now_save.strftime("%Y-%m-%d_%H-%M-%S")
-            proof_filename = f"output_{timestamp}.mp4"
-            destination_path = os.path.join(MEDIA_DIR, proof_filename)
-            shutil.copy("output_passingpaper.mp4", destination_path)
-
-            if IS_CLIENT:
-                scp.put("output_passingpaper.mp4", destination_path)
+            hall = cursor.fetchone()
+            hall_id = hall[0] if hall else None
 
             sql = """
                 INSERT INTO app_malpraticedetection (date, time, malpractice, proof, lecture_hall_id)
                 VALUES (%s, %s, %s, %s, %s)
             """
-            values = (date_db, time_db, ACTION_NAME, proof_filename, hall_id)
-            cursor.execute(sql, values)
+            val = (date_db, time_db, ACTION_NAME, proof_filename, hall_id)
+            cursor.execute(sql, val)
             db.commit()
 
             malpractice = 0
@@ -286,11 +241,10 @@ while cap.isOpened():
                 malpractice = 0
                 video_control = 0
 
-    # VIDEO RECORDING LOGIC
+    # Start/continue recording
     if malpractice >= 1:
         if video_control == 0:
             video_control = 1
-            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             fourcc = cv2.VideoWriter_fourcc(*"mp4v")
             out = cv2.VideoWriter("output_passingpaper.mp4", fourcc, 30, (FRAME_WIDTH, FRAME_HEIGHT))
         out.write(frame)
