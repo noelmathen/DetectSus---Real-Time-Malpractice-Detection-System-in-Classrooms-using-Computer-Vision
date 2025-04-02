@@ -41,7 +41,7 @@ MOBILE_THRESHOLD = 3
 # SSH CONFIG (Client Only)
 # ========================
 if IS_CLIENT:
-    hostname = "172.16.30.203"
+    hostname = "192.168.1.7"
     username = "SHRUTI S"
     password_ssh = "1234shibu"
 

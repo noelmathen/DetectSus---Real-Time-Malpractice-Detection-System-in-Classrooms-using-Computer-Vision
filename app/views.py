@@ -60,8 +60,8 @@ def teacher_register(request):
         profile = TeacherProfile(user=user, phone=phone, profile_picture=profile_picture)
         profile.save()
 
-        # return redirect('login')  # Or any success page
-    return render(request, 'login.html')
+        return redirect('login')  # Or any success page
+    return render(request, 'teacher_register.html')
 
 
 
@@ -364,25 +364,11 @@ def trigger_camera_scripts(request):
     if request.method == 'POST':
         client_configs = [
             {
-                "name": "Client 1 (Prinz Laptop)",
-                "ip": "192.168.0.101",
-                "username": "client1",
-                "password": "password1",
-                "script_path": "/home/client1/Desktop/DetectSus/scripts/top.py"
-            },
-            {
-                "name": "Client 2 (Front View)",
-                "ip": "192.168.0.102",
-                "username": "client2",
-                "password": "password2",
-                "script_path": "/home/client2/Desktop/DetectSus/scripts/front.py"
-            },
-            {
-                "name": "Client 3 (Top-Corner View)",
-                "ip": "192.168.0.103",
-                "username": "client3",
-                "password": "password3",
-                "script_path": "/home/client3/Desktop/DetectSus/scripts/top_corner.py"
+                "name": "Client - Noel Mathen",
+                "ip": "192.168.1.9",
+                "username": "noelmathen",
+                "password": "134652",
+                "script_path": "C:\\Users\\noelmathen\\Documents\\PROJECTS\\DetectSus\\ML\\top.py",
             }
         ]
 
@@ -391,15 +377,11 @@ def trigger_camera_scripts(request):
                 config["ip"],
                 config["username"],
                 config["password"],
-                config["script_path"]
+                config["script_path"],
             )
-            print(f"[{config['name']}]: {output if success else 'Error occurred.'}")
+            print(f"[{config['name']}]: {output if success else 'Error: ' + output}")
 
         for config in client_configs:
             threading.Thread(target=run_on_client, args=(config,)).start()
 
         return JsonResponse({'status': 'started'})
-
-
-
-        
