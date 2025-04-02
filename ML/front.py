@@ -8,7 +8,7 @@ from datetime import datetime
 from ultralytics import YOLO
 
 # If running on the client, import paramiko + scp
-IS_CLIENT = False  # Change to False if running on the host
+IS_CLIENT = True  # Change to False if running on the host
 
 if IS_CLIENT:
     import paramiko
@@ -19,8 +19,8 @@ if IS_CLIENT:
 # ========================
 USE_CAMERA = False
 CAMERA_INDEX = 1
-# VIDEO_PATH = "test_videos/Front.mp4"
-VIDEO_PATH = "test_videos/Passing_Paper.mp4"
+VIDEO_PATH = "test_videos/Front.mp4"
+# VIDEO_PATH = "test_videos/Passing_Paper.mp4"
 
 LECTURE_HALL_NAME = "LH2"
 BUILDING = "KE Block"
@@ -48,7 +48,7 @@ PASSING_ACTION = "Passing Paper"
 # SSH CONFIG (Only if client)
 # ========================
 if IS_CLIENT:
-    hostname = "172.16.30.203"
+    hostname = "192.168.1.7"
     username = "SHRUTI S"
     password_ssh = "1234shibu"
 

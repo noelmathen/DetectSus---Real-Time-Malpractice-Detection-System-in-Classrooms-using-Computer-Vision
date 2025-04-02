@@ -1,6 +1,6 @@
 # top.py
 import cv2
-import os
+import os 
 import shutil
 import numpy as np
 import mysql.connector
@@ -18,7 +18,7 @@ if IS_CLIENT:
 # CONFIGURABLE VARIABLES
 # ========================
 USE_CAMERA = True
-CAMERA_INDEX = 0
+CAMERA_INDEX = 1
 VIDEO_PATH = "test_videos/Phone_2.mp4"
 
 LECTURE_HALL_NAME = "LH2"
@@ -41,7 +41,7 @@ MOBILE_THRESHOLD = 3
 # SSH CONFIG (Client Only)
 # ========================
 if IS_CLIENT:
-    hostname = "172.16.30.203"
+    hostname = "192.168.1.7"
     username = "SHRUTI S"
     password_ssh = "1234shibu"
 
@@ -73,6 +73,10 @@ cursor = db.cursor()
 # ========================
 model = YOLO(MOBILE_MODEL_PATH)
 cap = cv2.VideoCapture(CAMERA_INDEX if USE_CAMERA else VIDEO_PATH)
+if not cap.isOpened():
+	print("\nCamera could not be opened!")
+else:
+	print("\nCamera stream started!")
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
 
@@ -99,7 +103,10 @@ while cap.isOpened():
     cv2.putText(frame, lecture_hall_name, (50, FRAME_HEIGHT - 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
 
     # Run detection
-    results = model(frame)
+    try:
+        results = model(frame)
+    except Exception as e:
+        print(f"YOLO Interface failed{e}")
     mobile_detected = False
 
     for result in results:
