@@ -8,7 +8,7 @@ from datetime import datetime
 from ultralytics import YOLO
 
 # If running as client, import paramiko + scp
-IS_CLIENT = True  # Change to True if you're on the client
+IS_CLIENT = False  # Change to True if you're on the client
 
 if IS_CLIENT:
     import paramiko
@@ -47,7 +47,7 @@ HAND_RAISE_ACTION = "Hand Raised"
 # SSH CONFIG (Only if client)
 # ========================
 if IS_CLIENT:
-    hostname = "192.168.60.9"
+    hostname = "192.168.1.7"
     username = "SHRUTI S"
     password_ssh = "1234shibu"
 

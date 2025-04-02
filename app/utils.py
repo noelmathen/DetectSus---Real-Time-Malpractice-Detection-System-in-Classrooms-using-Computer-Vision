@@ -3,6 +3,7 @@ from django.conf import settings
 from twilio.rest import Client
 import paramiko
 import os
+import subprocess
 
 def send_sms_notification(to_phone, message_body):
     """
@@ -48,6 +49,49 @@ def ssh_run_script(ip, username, password, script_path):
         err = stderr.read().decode()
         ssh.close()
         if err:
+            return False, err
+        return True, out
+    except Exception as e:
+        return False, str(e)
+
+
+
+# Helper function to run a script locally (host machine)
+def local_run_script(script_path):
+    try:
+        # Get the directory and file name from the script_path
+        script_dir = os.path.dirname(script_path)
+        script_name = os.path.basename(script_path)
+
+        #Use this if there is virtual environemnet in host laptop also
+        # activate = r'C:\Users\SHRUTI S\Documents\Repos\DetectSus\application\venv\Scripts\activate.bat'
+
+        # # Build the command with proper quoting to handle spaces in the paths.
+        # command = 'cmd /c "cd /d \"{}\" && call \"{}\" && python \"{}\""'.format(
+        #     script_dir, activate, script_name
+        # )
+
+
+        # Build the command without virtual environment activation.
+        # Using proper quoting to handle spaces in the paths.
+        command = 'cmd /c "cd /d \"{}\" && python \"{}\""'.format(
+            script_dir, script_name
+        )
+
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            shell=True,
+            text=True
+        )
+
+        # Optionally, stream the output line-by-line
+        for line in process.stdout:
+            print(f"[Local - Host] {line.strip()}")
+
+        out, err = process.communicate()
+        if process.returncode != 0:
             return False, err
         return True, out
     except Exception as e:

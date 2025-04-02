@@ -19,8 +19,10 @@ from django.contrib import messages
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.admin.views.decorators import staff_member_required
-from .utils import ssh_run_script
+from .utils import ssh_run_script, local_run_script
 import threading
+import os
+import subprocess
 
 # Global stop event
 stop_event = Event()
@@ -359,28 +361,50 @@ def run_cameras_page(request):
 
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.is_superuser)  # or your own is_admin function
 def trigger_camera_scripts(request):
     if request.method == 'POST':
+        # List of configurations for each angle
         client_configs = [
             {
-                "name": "Client - Noel Mathen",
+                "name": "Top Angle - Remote Client",
                 "ip": "192.168.1.9",
                 "username": "noelmathen",
                 "password": "134652",
                 "script_path": "C:\\Users\\noelmathen\\Documents\\PROJECTS\\DetectSus\\ML\\top.py",
-            }
+                "mode": "remote"
+            },
+            {
+                "name": "Top Corner - Host",
+                "script_path": "C:\\Users\\SHRUTI S\\Documents\\Repos\\DetectSus\\application\\application\\ML\\top_corner.py",
+                "mode": "local"
+            },
+            # {
+            #     "name": "Front Angle - Remote Client",
+            #     # Update the following with the actual IP, username, and password of the front camera client
+            #     "ip": "192.168.1.10",
+            #     "username": "frontuser",
+            #     "password": "password",
+            #     "script_path": "C:\\Users\\noelmathen\\Documents\\PROJECTS\\DetectSus\\ML\\front.py",
+            #     "mode": "remote"
+            # }
         ]
 
+        # Function to run a given configuration
         def run_on_client(config):
-            success, output = ssh_run_script(
-                config["ip"],
-                config["username"],
-                config["password"],
-                config["script_path"],
-            )
-            print(f"[{config['name']}]: {output if success else 'Error: ' + output}")
+            if config.get("mode") == "remote":
+                success, output = ssh_run_script(
+                    config["ip"],
+                    config["username"],
+                    config["password"],
+                    config["script_path"],
+                )
+                print(f"[{config['name']}]: {output if success else 'Error: ' + output}")
+            elif config.get("mode") == "local":
+                success, output = local_run_script(config["script_path"])
+                print(f"[{config['name']}]: {output if success else 'Error: ' + output}")
 
+        # Launch each script in a separate thread
         for config in client_configs:
             threading.Thread(target=run_on_client, args=(config,)).start()
 
