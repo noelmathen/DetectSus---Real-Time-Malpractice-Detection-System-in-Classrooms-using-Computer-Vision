@@ -6,6 +6,8 @@ import numpy as np
 import mysql.connector
 from datetime import datetime
 from ultralytics import YOLO
+import os
+
 
 # If running on the client, import paramiko + scp
 IS_CLIENT = True  # Set True on client, False on host
@@ -18,7 +20,7 @@ if IS_CLIENT:
 # CONFIGURABLE VARIABLES
 # ========================
 USE_CAMERA = True
-CAMERA_INDEX = 0
+CAMERA_INDEX = 1
 VIDEO_PATH = "test_videos/Phone_2.mp4"
 
 LECTURE_HALL_NAME = "LH2"
@@ -35,13 +37,16 @@ MOBILE_MODEL_PATH = "yolo11m.pt"
 MEDIA_DIR = "../media/"
 ACTION_NAME = "Mobile Phone Detected"
 MOBILE_THRESHOLD = 3
+
+HEADLESS = os.environ.get("HEADLESS","0")=="1"
+
 # ========================
 
 # ========================
 # SSH CONFIG (Client Only)
 # ========================
 if IS_CLIENT:
-    hostname = "172.16.30.203"
+    hostname = "192.168.1.7"
     username = "SHRUTI S"
     password_ssh = "1234shibu"
 
@@ -178,9 +183,10 @@ while cap.isOpened():
     if phone_in_progress and video_control and out is not None:
         out.write(frame)
 
-    cv2.imshow("Exam Monitoring - Mobile Detection", frame)
-    if cv2.waitKey(1) & 0xFF == ord("q"):
-        break
+    if not HEADLESS:
+        cv2.imshow("Exam Monitoring - Mobile Detection", frame)
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
 
 # Cleanup
 cap.release()
