@@ -366,38 +366,51 @@ def trigger_camera_scripts(request):
     if request.method == 'POST':
         # List of configurations for each angle
         client_configs = [
+            # {
+            #     "name": "Top Angle - Remote Client(Noel)",
+            #     "ip": "192.168.1.9",
+            #     "username": "noelmathen",
+            #     "password": "134652",
+            #     "script_path": "C:\\Users\\noelmathen\\Documents\\PROJECTS\\DetectSus\\ML\\top.py",
+            #     "mode": "remote"
+            # },
             {
-                "name": "Top Angle - Remote Client",
-                "ip": "192.168.1.9",
-                "username": "noelmathen",
-                "password": "134652",
-                "script_path": "C:\\Users\\noelmathen\\Documents\\PROJECTS\\DetectSus\\ML\\top.py",
-                "mode": "remote"
-            },
-            {
-                "name": "Top Corner - Host",
+                "name": "Top Corner - Host(Shruti)",
                 "script_path": "C:\\Users\\SHRUTI S\\Documents\\Repos\\DetectSus\\application\\application\\ML\\top_corner.py",
                 "mode": "local"
             },
-            # {
-            #     "name": "Front Angle - Remote Client",
-            #     # Update the following with the actual IP, username, and password of the front camera client
-            #     "ip": "192.168.1.10",
-            #     "username": "frontuser",
-            #     "password": "password",
-            #     "script_path": "C:\\Users\\noelmathen\\Documents\\PROJECTS\\DetectSus\\ML\\front.py",
-            #     "mode": "remote"
-            # }
+            {
+                "name": "Front Angle - Remote Client(Allen)",
+                "ip": "192.168.154.9",
+                "username": "allen",
+                "password": "5213",
+                "script_path": "D:\\application\\ML\\front.py",
+                "mode": "remote",
+                "use_venv": False  # disable venv activation for this host
+            },
+            {
+                "name": "Top Angle - Remote Client(Allen 2)",
+                "ip": "192.168.154.44",
+                "username": "allen",
+                "password": "5321",
+                "script_path": "C:\\Users\\allen\\DetectSus\\ML\\top.py",
+                "mode": "remote",
+                "use_venv": False  # disable venv activation for this host
+            }
         ]
 
         # Function to run a given configuration
         def run_on_client(config):
             if config.get("mode") == "remote":
+                use_venv = config.get("use_venv", True)
+                venv_path = config.get("venv_path", None)
                 success, output = ssh_run_script(
                     config["ip"],
                     config["username"],
                     config["password"],
                     config["script_path"],
+                    use_venv,
+                    venv_path
                 )
                 print(f"[{config['name']}]: {output if success else 'Error: ' + output}")
             elif config.get("mode") == "local":

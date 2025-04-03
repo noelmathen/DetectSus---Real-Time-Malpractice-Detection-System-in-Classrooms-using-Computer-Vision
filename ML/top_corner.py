@@ -17,8 +17,8 @@ if IS_CLIENT:
 # ========================
 # CONFIGURABLE VARIABLES
 # ========================
-USE_CAMERA = False
-CAMERA_INDEX = 1
+USE_CAMERA = True
+CAMERA_INDEX = 0
 VIDEO_PATH = "test_videos/Top_Corner.mp4"
 
 LECTURE_HALL_NAME = "LH2"
