@@ -188,55 +188,63 @@
           </tr>
         </thead>
         <tbody>
-          {% for i in result %}
-          <tr class="{% if is_admin and i.verified %}reviewed-row{% endif %}">
-            <td>{{ forloop.counter }}</td>
-            <td>{{ i.date }}</td>
-            <td>{{ i.time }}</td>
-            <td>{{ i.malpractice }}</td>
-            <td>
-              {% if i.lecture_hall %}
-              {{ i.lecture_hall.building }} - {{ i.lecture_hall.hall_name }}
-              {% else %}
-              <span class="text-muted">N/A</span>
-              {% endif %}
-            </td>
-            <td>
-              {% if i.lecture_hall and i.lecture_hall.assigned_teacher %}
-              {{ i.lecture_hall.assigned_teacher.get_full_name|default:i.lecture_hall.assigned_teacher.username }}
-              {% else %}
-              <span class="text-muted">Unassigned</span>
-              {% endif %}
-            </td>
-            <td>
-              <button type="button" class="btn btn-secondary" data-toggle="modal" data-target="#videoModal"
-                onclick="playVideo('{{ i.proof }}')">
-                View
-              </button>
-            </td>
-            <td>
-              <a href="/media/{{ i.proof }}" download class="btn btn-primary btn-download">
-                Download
-              </a>
-            </td>
-            {% if is_admin %}
-            <td>
-              <div class="btn-group" role="group">
-                <button
-                  class="btn btn-success btn-review {% if i.verified and i.is_malpractice %}btn-reviewed-yes{% endif %}"
-                  onclick="reviewMalpractice(this, 'yes')" {% if i.verified %}disabled{% endif %}>
-                  Malpractice
+          {% if result %}
+            {% for i in result %}
+            <tr class="{% if is_admin and i.verified %}reviewed-row{% endif %}">
+              <td>{{ forloop.counter }}</td>
+              <td>{{ i.date }}</td>
+              <td>{{ i.time }}</td>
+              <td>{{ i.malpractice }}</td>
+              <td>
+                {% if i.lecture_hall %}
+                {{ i.lecture_hall.building }} - {{ i.lecture_hall.hall_name }}
+                {% else %}
+                <span class="text-muted">N/A</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if i.lecture_hall and i.lecture_hall.assigned_teacher %}
+                {{ i.lecture_hall.assigned_teacher.get_full_name|default:i.lecture_hall.assigned_teacher.username }}
+                {% else %}
+                <span class="text-muted">Unassigned</span>
+                {% endif %}
+              </td>
+              <td>
+                <button type="button" class="btn btn-secondary" data-toggle="modal" data-target="#videoModal"
+                  onclick="playVideo('{{ i.proof }}')">
+                  View
                 </button>
-                <button
-                  class="btn btn-danger btn-review {% if i.verified and not i.is_malpractice %}btn-reviewed-no{% endif %}"
-                  onclick="reviewMalpractice(this, 'no')" {% if i.verified %}disabled{% endif %}>
-                  Not Malpractice
-                </button>
-              </div>
-            </td>
-            {% endif %}
-          </tr>
-          {% endfor %}
+              </td>
+              <td>
+                <a href="/media/{{ i.proof }}" download class="btn btn-primary btn-download">
+                  Download
+                </a>
+              </td>
+              {% if is_admin %}
+              <td>
+                <div class="btn-group" role="group">
+                  <button
+                    class="btn btn-success btn-review {% if i.verified and i.is_malpractice %}btn-reviewed-yes{% endif %}"
+                    onclick="reviewMalpractice(this, 'yes')" {% if i.verified %}disabled{% endif %}>
+                    Malpractice
+                  </button>
+                  <button
+                    class="btn btn-danger btn-review {% if i.verified and not i.is_malpractice %}btn-reviewed-no{% endif %}"
+                    onclick="reviewMalpractice(this, 'no')" {% if i.verified %}disabled{% endif %}>
+                    Not Malpractice
+                  </button>
+                </div>
+              </td>
+              {% endif %}
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="{% if is_admin %}9{% else %}8{% endif %}" class="text-center text-muted">
+                No malpractice logs found.
+              </td>
+            </tr>
+          {% endif %}
         </tbody>
       </table>
     </div>
