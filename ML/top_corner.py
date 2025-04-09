@@ -47,7 +47,7 @@ HAND_RAISE_ACTION = "Hand Raised"
 # SSH CONFIG (Only if client)
 # ========================
 if IS_CLIENT:
-    hostname = "192.168.39.44"
+    hostname = "192.168.1.3"
     username = "allen"
     password_ssh = "5321"
 

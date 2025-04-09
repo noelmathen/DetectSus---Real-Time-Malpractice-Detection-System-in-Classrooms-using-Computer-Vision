@@ -409,35 +409,36 @@ def trigger_camera_scripts(request):
         # List of configurations for each angle
         client_configs = [
             # {
-            #     "name": "Top Angle - Remote Client(Noel)",
-            #     "ip": "192.168.1.9",
-            #     "username": "noelmathen",
-            #     "password": "134652",
-            #     "script_path": "C:\\Users\\noelmathen\\Documents\\PROJECTS\\DetectSus\\ML\\top.py",
-            #     "mode": "remote"
+            #     "name": "Top Corner - Host(Allen 2)",
+            #     "script_path": "C:\\Users\\allen\\DetectSus\\ML\\top_corner.py",
+            #     "mode": "local"
+            # },
+            # {
+            #     "name": "Top Corner Angle - Remote Client(Allen)",
+            #     "ip": "192.168.154.9",
+            #     "username": "allen",
+            #     "password": "5213",
+            #     "script_path": "D:\\application\\ML\\front.py",
+            #     "mode": "remote",
+            #     "use_venv": False  # disable venv activation for this host
+            # },
+            # {
+            #     "name": "Front Angle - Remote Client(Shruti)",
+            #     "ip": "192.168.39.145",
+            #     "username": "SHRUTI S",
+            #     "password": "1234shibu",
+            #     "script_path": "C:\\Users\\SHRUTI S\\Documents\\Repos\\DetectSus\\application\\application\\ML\\front.py",
+            #     "mode": "remote",
+            #     "use_venv": False 
             # },
             {
-                "name": "Top Corner - Host(Shruti)",
-                "script_path": "C:\\Users\\SHRUTI S\\Documents\\Repos\\DetectSus\\application\\application\\ML\\top_corner.py",
-                "mode": "local"
-            },
-            {
-                "name": "Front Angle - Remote Client(Allen)",
-                "ip": "192.168.154.9",
-                "username": "allen",
-                "password": "5213",
-                "script_path": "D:\\application\\ML\\front.py",
+                "name": "Top Angle - Remote Client(Noel)",
+                "ip": "192.168.1.8",
+                "username": "noelmathen",
+                "password": "134652",
                 "mode": "remote",
-                "use_venv": False  # disable venv activation for this host
-            },
-            {
-                "name": "Top Angle - Remote Client(Allen 2)",
-                "ip": "192.168.154.44",
-                "username": "allen",
-                "password": "5321",
-                "script_path": "C:\\Users\\allen\\DetectSus\\ML\\top.py",
-                "mode": "remote",
-                "use_venv": False  # disable venv activation for this host
+                "script_path": "C:\\Users\\noelmathen\\Documents\\PROJECTS\\DetectSus\\ML\\top.py",
+                "use_venv": True
             }
         ]
 
