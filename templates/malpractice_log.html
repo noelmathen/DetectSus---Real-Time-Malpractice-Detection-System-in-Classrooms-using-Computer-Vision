@@ -156,9 +156,6 @@
       {% endif %}
     {% endif %}
 
-
-
-
     <!-- FILTER BAR -->
     <div class="filter-bar mb-4">
       <form method="get">
@@ -475,4 +472,52 @@
         }
       });
   }
+  function reviewMalpractice(button, decision) {
+    // Save the original content for later restoration.
+    const originalContent = button.innerHTML;
+    // Immediately disable the button and show a loading spinner.
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    button.disabled = true;
+
+    const row = button.closest('tr');
+    const proof = row.querySelector('a[download]').getAttribute('href').split('/').pop();
+
+    fetch(`/review_malpractice/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}'
+      },
+      body: JSON.stringify({ proof: proof, decision: decision })
+    })
+    .then(response => {
+      if (response.ok) {
+        // Mark row as reviewed
+        row.classList.add('reviewed-row');
+
+        // Disable all buttons in this row.
+        const buttons = row.querySelectorAll('.btn-review');
+        buttons.forEach(btn => {
+          btn.disabled = true;
+          btn.classList.remove('btn-reviewed-yes', 'btn-reviewed-no');
+        });
+
+        // Highlight the clicked button according to decision.
+        if (decision === 'yes') {
+          button.classList.add('btn-reviewed-yes');
+        } else {
+          button.classList.add('btn-reviewed-no');
+        }
+      }
+    })
+    .catch(error => {
+      console.error("Review failed:", error);
+      // Optionally, show an error notification here.
+    })
+    .finally(() => {
+      // Restore the button content (if needed)
+      button.innerHTML = originalContent;
+    });
+  }
+
 </script>
