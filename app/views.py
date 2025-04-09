@@ -164,12 +164,18 @@ def malpractice_log(request):
     query = request.GET.get('q', '').strip()
     faculty_filter = request.GET.get('faculty', '').strip()
     assignment_filter = request.GET.get('assigned', '').strip()
+    review_filter = request.GET.get('review', '').strip() or 'not_reviewed'
+
 
     # Base Queryset based on user role
     if request.user.is_superuser:
         logs = MalpraticeDetection.objects.all()
+        # Apply review filter for admin
+        if review_filter.lower() == 'reviewed':
+            logs = logs.filter(verified=True)
+        elif review_filter.lower() == 'not_reviewed':
+            logs = logs.filter(verified=False)
     else:
-        # For teacher users, retrieve lecture halls assigned to them based on LectureHall.assigned_teacher.
         assigned_halls = LectureHall.objects.filter(assigned_teacher=request.user)
         logs = MalpraticeDetection.objects.filter(
             lecture_hall__in=assigned_halls,
@@ -199,6 +205,12 @@ def malpractice_log(request):
         elif assignment_filter.lower() == "unassigned":
             logs = logs.filter(lecture_hall__assigned_teacher__isnull=True)
 
+    # if review_filter:
+    #     if review_filter.lower() == 'reviewed':
+    #         logs = logs.filter(verified=True)
+    #     elif review_filter.lower() == 'not_reviewed':
+    #         logs = logs.filter(verified=False)
+
     logs = logs.order_by('-date', '-time')
 
     # Update session record count to trigger alert if new logs appear
@@ -222,9 +234,11 @@ def malpractice_log(request):
         'query': query,
         'faculty_filter': faculty_filter,
         'assignment_filter': assignment_filter,
+        'review_filter': review_filter,  # Pass review filter to template
         'faculty_list': User.objects.filter(teacherprofile__isnull=False, is_superuser=False),
         'buildings': LectureHall.objects.values_list('building', flat=True).distinct(),
     }
+
     return render(request, 'malpractice_log.html', context)
 
 

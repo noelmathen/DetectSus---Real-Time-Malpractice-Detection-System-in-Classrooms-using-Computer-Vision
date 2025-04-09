@@ -137,6 +137,60 @@
   .close:hover {
     color: #ffc107;
   }
+
+  .my-toggle-wrapper {
+    text-align: center; /* center horizontally */
+    margin-bottom: 20px;
+  }
+  /* Toggle container */
+  .my-toggle {
+    position: relative;
+    display: inline-block;
+    width: 250px;  /* adjusted for proper text fit */
+    height: 50px;
+    background-color: #f0f2f5;
+    border: 2px solid #007bff;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  /* Label container for the two halves */
+  .my-toggle-labels {
+    position: absolute;
+    display: flex;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    font-family: 'Poppins', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #007bff;
+  }
+  .my-toggle-labels span {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.3s ease;
+  }
+  .my-toggle-labels span.active {
+    color: #fff;
+  }
+  /* The sliding indicator */
+  .my-toggle-slider {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 50%; /* exactly half the container */
+    height: 100%;
+    background-color: #007bff;
+    transition: transform 0.3s ease;
+    z-index: 1;
+  }
+
+  .reviewing-row {
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
 </style>
 
 <section class="malpractice-section">
@@ -159,6 +213,7 @@
     <!-- FILTER BAR -->
     <div class="filter-bar mb-4">
       <form method="get">
+        <input type="hidden" name="review" value="{{ review_filter|default:'not_reviewed' }}">
         {% if request.user.is_superuser %}
           <!-- ADMIN FILTERS (2 Rows) -->
           <div class="form-row">
@@ -290,6 +345,24 @@
     </div>
     <!-- END OF FILTER BAR -->
 
+    <!-- Review Toggle Switch -->
+    <!-- Review Toggle Switch -->
+    {% if request.user.is_superuser %}
+      <div class="my-toggle-wrapper">
+        <div class="my-toggle" id="reviewToggle">
+          <div class="my-toggle-slider" id="reviewSlider"></div>
+          <div class="my-toggle-labels">
+            <span id="labelNotReviewed" class="{% if review_filter|default:'not_reviewed' == 'not_reviewed' %}active{% endif %}">
+              Not Reviewed
+            </span>
+            <span id="labelReviewed" class="{% if review_filter == 'reviewed' %}active{% endif %}">
+              Reviewed
+            </span>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
     <!-- Malpractice Log Table -->
     <div class="table-container">
       <table class="table table-striped">
@@ -369,6 +442,8 @@
         </tbody>
       </table>
     </div>
+    <!-- Malpractice Log Table -->
+    
   </div>
 </section>
 
@@ -394,12 +469,118 @@
 </div>
 
 <script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const toggleEl = document.getElementById("reviewToggle");
+    const sliderEl = document.getElementById("reviewSlider");
+    const labelNotReviewed = document.getElementById("labelNotReviewed");
+    const labelReviewed = document.getElementById("labelReviewed");
+
+    // Determine initial state based on which label has the 'active' class.
+    let currentState = labelReviewed.classList.contains("active")
+                      ? "reviewed"
+                      : "not_reviewed";
+
+    // Set the slider's initial position.
+    sliderEl.style.transform =
+      currentState === "reviewed" ? "translateX(100%)" : "translateX(0)";
+
+    // Toggle without reloading the page:
+    toggleEl.addEventListener("click", function () {
+      // Toggle state and update slider and labels.
+      if (currentState === "not_reviewed") {
+        currentState = "reviewed";
+        sliderEl.style.transform = "translateX(100%)";
+        labelNotReviewed.classList.remove("active");
+        labelReviewed.classList.add("active");
+      } else {
+        currentState = "not_reviewed";
+        sliderEl.style.transform = "translateX(0)";
+        labelReviewed.classList.remove("active");
+        labelNotReviewed.classList.add("active");
+      }
+
+      // Update the URL parameter without reloading.
+      const url = new URL(window.location.href);
+      url.searchParams.set("review", currentState);
+      history.pushState({}, "", url.href);
+
+      // Fetch the updated logs HTML and update the table container.
+      updateLogs(url.href);
+    });
+
+    function updateLogs(urlWithFilter) {
+      // Add an X-Requested-With header to signal an AJAX request if needed by your view.
+      fetch(urlWithFilter, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+        .then((response) => response.text())
+        .then((htmlText) => {
+          // Parse the fetched HTML.
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(htmlText, "text/html");
+          // Assume the logs table is contained within the element with the class '.table-container'
+          const newTableContainer = doc.querySelector(".table-container");
+          if (newTableContainer) {
+            const currentContainer = document.querySelector(".table-container");
+            if (currentContainer) {
+              currentContainer.innerHTML = newTableContainer.innerHTML;
+            }
+          }
+        })
+        .catch((err) => console.error("Error updating logs:", err));
+    }
+  });
+
+
+  document.addEventListener("DOMContentLoaded", function() {
+    const filterForm = document.querySelector(".filter-bar form");
+    if (!filterForm) return;
+
+    filterForm.addEventListener("submit", function(e) {
+      // Prevent the default full-page reload.
+      e.preventDefault();
+      sessionStorage.setItem("retainFilters", "true");
+      
+      // Serialize form data into query string.
+      const formData = new FormData(filterForm);
+      const params = new URLSearchParams(formData);
+      const fetchUrl = window.location.pathname + "?" + params.toString();
+
+      // Optionally update the URL (if you wish to reflect the current state in the address bar)
+      history.pushState({}, "", fetchUrl);
+
+      // Fetch the updated logs (assuming your view returns a complete HTML page)
+      fetch(fetchUrl, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+        .then(response => response.text())
+        .then(htmlText => {
+          // Create a temporary DOM container.
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(htmlText, "text/html");
+
+          // Locate the new table container in the fetched HTML.
+          const newTableContainer = doc.querySelector(".table-container");
+          if (newTableContainer) {
+            // Replace the current table container's content with the new HTML.
+            const currentTableContainer = document.querySelector(".table-container");
+            if (currentTableContainer) {
+              currentTableContainer.innerHTML = newTableContainer.innerHTML;
+            }
+          }
+        })
+        .catch(error => {
+          console.error("Error during filtering:", error);
+        });
+    });
+  });
+
+
   // Filtering data made to default when page is refreshed
   window.addEventListener("load", function() {
-      if (window.location.search) {
-          history.replaceState({}, document.title, window.location.pathname);
-      }
+    const navEntries = performance.getEntriesByType("navigation");
+    if (navEntries.length > 0 && navEntries[0].type === "reload") {
+      // When the page was manually refreshed, clear the query parameters.
+      history.replaceState({}, document.title, window.location.pathname);
+    }
   });
+
 
   // VIEW VIDEO
   function playVideo(videoUrl) {
@@ -438,48 +619,19 @@
     }
   }
 
-  // Mark row as reviewed
+
+  // Get current review filter from template (defaults to 'not_reviewed')
+  const currentReviewFilter = "{{ review_filter|default:'not_reviewed' }}".toLowerCase();
   function reviewMalpractice(button, decision) {
-    const row = button.closest('tr');
-    const proof = row.querySelector('a[download]').getAttribute('href').split('/').pop();
-
-    fetch(`/review_malpractice/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': '{{ csrf_token }}'
-      },
-      body: JSON.stringify({ proof: proof, decision: decision })
-    })
-      .then(response => {
-        if (response.ok) {
-          // Mark row visually
-          row.classList.add('reviewed-row');
-
-          // Disable both buttons
-          const buttons = row.querySelectorAll('.btn-review');
-          buttons.forEach(btn => {
-            btn.disabled = true;
-            btn.classList.remove('btn-reviewed-yes', 'btn-reviewed-no');
-          });
-
-          // Highlight clicked button
-          if (decision === 'yes') {
-            button.classList.add('btn-reviewed-yes');
-          } else {
-            button.classList.add('btn-reviewed-no');
-          }
-        }
-      });
-  }
-  function reviewMalpractice(button, decision) {
-    // Save the original content for later restoration.
     const originalContent = button.innerHTML;
-    // Immediately disable the button and show a loading spinner.
     button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
     button.disabled = true;
 
+    // Get the table row containing the clicked button
     const row = button.closest('tr');
+    // Add a class to ensure transitions are applied
+    row.classList.add('reviewing-row');
+    
     const proof = row.querySelector('a[download]').getAttribute('href').split('/').pop();
 
     fetch(`/review_malpractice/`, {
@@ -492,32 +644,43 @@
     })
     .then(response => {
       if (response.ok) {
-        // Mark row as reviewed
+        // Mark row as reviewed and disable buttons in this row
         row.classList.add('reviewed-row');
-
-        // Disable all buttons in this row.
         const buttons = row.querySelectorAll('.btn-review');
         buttons.forEach(btn => {
           btn.disabled = true;
           btn.classList.remove('btn-reviewed-yes', 'btn-reviewed-no');
         });
-
-        // Highlight the clicked button according to decision.
         if (decision === 'yes') {
           button.classList.add('btn-reviewed-yes');
         } else {
           button.classList.add('btn-reviewed-no');
         }
+
+        // If the log now doesn’t belong to the current filter, animate it out.
+        if ((currentReviewFilter === "not_reviewed" && decision === "yes") ||
+            (currentReviewFilter === "not_reviewed" && decision === "no")) {
+          // Force reflow for consistent animation
+          void row.offsetWidth;
+          row.style.transition = "opacity 0.4s ease, transform 0.4s ease";
+          row.style.opacity = "0";
+          row.style.transform = "translateX(50px)";
+          setTimeout(() => {
+            row.remove();
+          }, 400);
+        }
       }
     })
     .catch(error => {
-      console.error("Review failed:", error);
-      // Optionally, show an error notification here.
+      console.error("Review update failed:", error);
+      // Optionally, you can display an error notification here.
     })
     .finally(() => {
-      // Restore the button content (if needed)
+      // Optionally restore original button content if needed (or leave it as is)
       button.innerHTML = originalContent;
     });
   }
+
+
 
 </script>
