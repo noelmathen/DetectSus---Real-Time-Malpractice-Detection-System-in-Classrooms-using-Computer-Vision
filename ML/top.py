@@ -8,7 +8,7 @@ from datetime import datetime
 from ultralytics import YOLO
 
 # If running on the client, import paramiko + scp
-IS_CLIENT = False  # Set True on client, False on host
+IS_CLIENT = True  # Set True on client, False on host
 
 if IS_CLIENT:
     import paramiko
@@ -88,112 +88,117 @@ out = None
 # ========================
 # MAIN LOOP
 # ========================
-while cap.isOpened():
-    ret, frame = cap.read()
-    if not ret:
-        break
+try:  
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
 
-    frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
+        frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
 
-    # Overlay: Day, Date, Time
-    now = datetime.now()
-    overlay_text = f"{now.strftime('%a')} | {now.strftime('%d-%m-%Y')} | {now.strftime('%I:%M:%S %p').lower()}"
-    cv2.putText(frame, overlay_text, (50, 100), cv2.FONT_HERSHEY_DUPLEX, 1.1, (255, 255, 255), 2)
-    lecture_hall_name = f"{LECTURE_HALL_NAME} | {BUILDING}"
-    cv2.putText(frame, lecture_hall_name, (50, FRAME_HEIGHT - 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+        # Overlay: Day, Date, Time
+        now = datetime.now()
+        overlay_text = f"{now.strftime('%a')} | {now.strftime('%d-%m-%Y')} | {now.strftime('%I:%M:%S %p').lower()}"
+        cv2.putText(frame, overlay_text, (50, 100), cv2.FONT_HERSHEY_DUPLEX, 1.1, (255, 255, 255), 2)
+        lecture_hall_name = f"{LECTURE_HALL_NAME} | {BUILDING}"
+        cv2.putText(frame, lecture_hall_name, (50, FRAME_HEIGHT - 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
 
-    # Run detection
-    try:
-        results = model(frame)
-    except Exception as e:
-        print(f"YOLO Interface failed{e}")
-    mobile_detected = False
+        # Run detection
+        try:
+            results = model(frame)
+        except Exception as e:
+            print(f"YOLO Interface failed{e}")
+        mobile_detected = False
 
-    for result in results:
-        if result.boxes is not None:
-            for box in result.boxes:
-                if int(box.cls) == 67:
-                    x1, y1, x2, y2 = map(int, box.xyxy[0])
-                    mobile_detected = True
-                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 165, 255), 2)
-                    cv2.putText(frame, "Mobile", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 165, 255), 2)
+        for result in results:
+            if result.boxes is not None:
+                for box in result.boxes:
+                    if int(box.cls) == 67:
+                        x1, y1, x2, y2 = map(int, box.xyxy[0])
+                        mobile_detected = True
+                        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 165, 255), 2)
+                        cv2.putText(frame, "Mobile", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 165, 255), 2)
 
-    if mobile_detected:
-        if not phone_in_progress:
-            phone_in_progress = True
-            phone_frames = 1
-            if not video_control:
-                video_control = True
-                fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-                out = cv2.VideoWriter("output_mobiledetection.mp4", fourcc, 30, (FRAME_WIDTH, FRAME_HEIGHT))
+        if mobile_detected:
+            if not phone_in_progress:
+                phone_in_progress = True
+                phone_frames = 1
+                if not video_control:
+                    video_control = True
+                    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+                    out = cv2.VideoWriter("output_mobiledetection.mp4", fourcc, 30, (FRAME_WIDTH, FRAME_HEIGHT))
+            else:
+                phone_frames += 1
+
+            cv2.putText(frame, ACTION_NAME + "!", (850, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
+            if video_control and out is not None:
+                out.write(frame)
+
         else:
-            phone_frames += 1
+            if phone_in_progress:
+                phone_in_progress = False
+                if phone_frames >= MOBILE_THRESHOLD:
+                    if video_control and out is not None:
+                        out.release()
 
-        cv2.putText(frame, ACTION_NAME + "!", (850, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                    now_save = datetime.now()
+                    timestamp = now_save.strftime("%Y-%m-%d_%H-%M-%S")
+                    proof_filename = f"output_{timestamp}.mp4"
+                    date_db = now_save.date().isoformat()
+                    time_db = now_save.time().strftime('%H:%M:%S')
 
-        if video_control and out is not None:
+                    # Get hall_id
+                    cursor.execute(
+                        "SELECT id FROM app_lecturehall WHERE hall_name = %s AND building = %s LIMIT 1",
+                        (LECTURE_HALL_NAME, BUILDING)
+                    )
+                    hall_result = cursor.fetchone()
+                    hall_id = hall_result[0] if hall_result else None
+
+                    # Copy to local media folder
+                    local_media_path = os.path.join(MEDIA_DIR, proof_filename)
+                    shutil.copy("output_mobiledetection.mp4", local_media_path)
+
+                    # Upload to host if client
+                    if IS_CLIENT:
+                        remote_media_path = f"./DetectSus/media/{proof_filename}"
+                        scp.put("output_mobiledetection.mp4", remote_media_path)
+
+                    # Log to DB
+                    sql = """
+                        INSERT INTO app_malpraticedetection (date, time, malpractice, proof, lecture_hall_id)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """
+                    values = (date_db, time_db, ACTION_NAME, proof_filename, hall_id)
+                    cursor.execute(sql, values)
+                    db.commit()
+                else:
+                    if video_control and out is not None:
+                        out.release()
+                    if os.path.exists("output_mobiledetection.mp4"):
+                        os.remove("output_mobiledetection.mp4")
+
+                phone_frames = 0
+                video_control = False
+                out = None
+
+        if phone_in_progress and video_control and out is not None:
             out.write(frame)
 
-    else:
-        if phone_in_progress:
-            phone_in_progress = False
-            if phone_frames >= MOBILE_THRESHOLD:
-                if video_control and out is not None:
-                    out.release()
+        cv2.imshow("Exam Monitoring - Mobile Detection", frame)
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
 
-                now_save = datetime.now()
-                timestamp = now_save.strftime("%Y-%m-%d_%H-%M-%S")
-                proof_filename = f"output_{timestamp}.mp4"
-                date_db = now_save.date().isoformat()
-                time_db = now_save.time().strftime('%H:%M:%S')
+except KeyboardInterrupt:
+    print("Received keybaord interrupt; shutting down...")
 
-                # Get hall_id
-                cursor.execute(
-                    "SELECT id FROM app_lecturehall WHERE hall_name = %s AND building = %s LIMIT 1",
-                    (LECTURE_HALL_NAME, BUILDING)
-                )
-                hall_result = cursor.fetchone()
-                hall_id = hall_result[0] if hall_result else None
-
-                # Copy to local media folder
-                local_media_path = os.path.join(MEDIA_DIR, proof_filename)
-                shutil.copy("output_mobiledetection.mp4", local_media_path)
-
-                # Upload to host if client
-                if IS_CLIENT:
-                    remote_media_path = f"./DetectSus/media/{proof_filename}"
-                    scp.put("output_mobiledetection.mp4", remote_media_path)
-
-                # Log to DB
-                sql = """
-                    INSERT INTO app_malpraticedetection (date, time, malpractice, proof, lecture_hall_id)
-                    VALUES (%s, %s, %s, %s, %s)
-                """
-                values = (date_db, time_db, ACTION_NAME, proof_filename, hall_id)
-                cursor.execute(sql, values)
-                db.commit()
-            else:
-                if video_control and out is not None:
-                    out.release()
-                if os.path.exists("output_mobiledetection.mp4"):
-                    os.remove("output_mobiledetection.mp4")
-
-            phone_frames = 0
-            video_control = False
-            out = None
-
-    if phone_in_progress and video_control and out is not None:
-        out.write(frame)
-
-    cv2.imshow("Exam Monitoring - Mobile Detection", frame)
-    if cv2.waitKey(1) & 0xFF == ord("q"):
-        break
-
-# Cleanup
-cap.release()
-if video_control and out is not None:
-    out.release()
-if IS_CLIENT:
-    scp.close()
-    ssh.close()
-cv2.destroyAllWindows()
+finally:    
+    # Cleanup
+    cap.release()
+    if video_control and out is not None:
+        out.release()
+    if IS_CLIENT:
+        scp.close()
+        ssh.close()
+    cv2.destroyAllWindows()

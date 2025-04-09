@@ -136,186 +136,192 @@ mobile_recording = False
 # ========================
 # MAIN LOOP
 # ========================
-while cap.isOpened():
-    ret, frame = cap.read()
-    if not ret:
-        break
-    frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
 
-    # ------------------------
-    # Overlay Date/Time & Lecture Hall Info
-    # ------------------------
-    now = datetime.now()
-    overlay_text = f"{now.strftime('%a')} | {now.strftime('%d-%m-%Y')} | {now.strftime('%I:%M:%S %p').lower()}"
-    cv2.putText(frame, overlay_text, (50, 100),
-                cv2.FONT_HERSHEY_DUPLEX, 1.1, (255, 255, 255), 2, cv2.LINE_AA)
-    hall_text = f"{LECTURE_HALL_NAME} | {BUILDING}"
-    cv2.putText(frame, hall_text, (50, FRAME_HEIGHT - 50),
-                cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+try:
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+        frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
 
-    # ------------------------
-    # Turning Back Detection with Pose Model
-    # ------------------------
-    pose_results = pose_model(frame)
-    turning_this_frame = False
-    for result in pose_results:
-        keypoints_arr = result.keypoints.xy.cpu().numpy() if result.keypoints else []
-        for kp in keypoints_arr:
-            if is_turning_back(kp):
-                turning_this_frame = True
-                # Mark the first 6 keypoints in red for turning
-                for x, y in kp[:6]:
-                    cv2.circle(frame, (int(x), int(y)), 5, (0, 0, 255), -1)
-            else:
-                # Mark the first 6 keypoints in green if not turning
-                for x, y in kp[:6]:
+        # ------------------------
+        # Overlay Date/Time & Lecture Hall Info
+        # ------------------------
+        now = datetime.now()
+        overlay_text = f"{now.strftime('%a')} | {now.strftime('%d-%m-%Y')} | {now.strftime('%I:%M:%S %p').lower()}"
+        cv2.putText(frame, overlay_text, (50, 100),
+                    cv2.FONT_HERSHEY_DUPLEX, 1.1, (255, 255, 255), 2, cv2.LINE_AA)
+        hall_text = f"{LECTURE_HALL_NAME} | {BUILDING}"
+        cv2.putText(frame, hall_text, (50, FRAME_HEIGHT - 50),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+
+        # ------------------------
+        # Turning Back Detection with Pose Model
+        # ------------------------
+        pose_results = pose_model(frame)
+        turning_this_frame = False
+        for result in pose_results:
+            keypoints_arr = result.keypoints.xy.cpu().numpy() if result.keypoints else []
+            for kp in keypoints_arr:
+                if is_turning_back(kp):
+                    turning_this_frame = True
+                    # Mark the first 6 keypoints in red for turning
+                    for x, y in kp[:6]:
+                        cv2.circle(frame, (int(x), int(y)), 5, (0, 0, 255), -1)
+                else:
+                    # Mark the first 6 keypoints in green if not turning
+                    for x, y in kp[:6]:
+                        cv2.circle(frame, (int(x), int(y)), 5, (0, 255, 0), -1)
+                # Mark remaining keypoints in green
+                for x, y in kp[6:]:
                     cv2.circle(frame, (int(x), int(y)), 5, (0, 255, 0), -1)
-            # Mark remaining keypoints in green
-            for x, y in kp[6:]:
-                cv2.circle(frame, (int(x), int(y)), 5, (0, 255, 0), -1)
 
-    # Update state for turning detection
-    if turning_this_frame:
-        if not turning_in_progress:
-            turning_in_progress = True
-            turning_frames = 1
-            if not turning_recording:
-                turning_recording = True
-                fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-                turning_video = cv2.VideoWriter("output_turningback.mp4", fourcc, 30, (FRAME_WIDTH, FRAME_HEIGHT))
-        else:
-            turning_frames += 1
-        cv2.putText(frame, TURNING_BACK_ACTION + "!", (850, 100),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
-    else:
-        if turning_in_progress:
-            turning_in_progress = False
-            if turning_frames >= TURNING_THRESHOLD:
-                if turning_recording and turning_video:
-                    turning_video.release()
-                now_save = datetime.now()
-                timestamp = now_save.strftime("%Y-%m-%d_%H-%M-%S")
-                proof_filename = f"output_turningback_{timestamp}.mp4"
-                date_db = now_save.date().isoformat()
-                time_db = now_save.time().strftime('%H:%M:%S')
-                cursor.execute(
-                    "SELECT id FROM app_lecturehall WHERE hall_name=%s AND building=%s LIMIT 1",
-                    (LECTURE_HALL_NAME, BUILDING)
-                )
-                hall_result = cursor.fetchone()
-                hall_id = hall_result[0] if hall_result else None
-                local_temp = "output_turningback.mp4"
-                dest_path = os.path.join(MEDIA_DIR, proof_filename)
-                shutil.copy(local_temp, dest_path)
-                if IS_CLIENT:
-                    remote_dest = f"./DetectSus/media/{proof_filename}"
-                    scp.put(local_temp, remote_dest)
-                sql = """
-                    INSERT INTO app_malpraticedetection (date, time, malpractice, proof, lecture_hall_id)
-                    VALUES (%s, %s, %s, %s, %s)
-                """
-                values = (date_db, time_db, TURNING_BACK_ACTION, proof_filename, hall_id)
-                cursor.execute(sql, values)
-                db.commit()
+        # Update state for turning detection
+        if turning_this_frame:
+            if not turning_in_progress:
+                turning_in_progress = True
+                turning_frames = 1
+                if not turning_recording:
+                    turning_recording = True
+                    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+                    turning_video = cv2.VideoWriter("output_turningback.mp4", fourcc, 30, (FRAME_WIDTH, FRAME_HEIGHT))
             else:
-                if turning_recording and turning_video:
-                    turning_video.release()
-                if os.path.exists("output_turningback.mp4"):
-                    os.remove("output_turningback.mp4")
-            turning_frames = 0
-            turning_recording = False
-            turning_video = None
-
-    if turning_in_progress and turning_recording and turning_video:
-        turning_video.write(frame)
-
-    # ------------------------
-    # Mobile Phone Detection with Mobile Model
-    # ------------------------
-    try:
-        mobile_results = mobile_model(frame)
-    except Exception as e:
-        print("Mobile detection error:", e)
-        mobile_results = []
-
-    mobile_detected = False
-    for result in mobile_results:
-        if result.boxes is not None:
-            for box in result.boxes:
-                if int(box.cls) == 67:  # Class 67 represents mobile phone
-                    mobile_detected = True
-                    x1, y1, x2, y2 = map(int, box.xyxy[0])
-                    # Draw an orange rectangle and label
-                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 165, 255), 2)
-                    cv2.putText(frame, "Mobile", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 165, 255), 2)
-
-    # Update state for mobile detection
-    if mobile_detected:
-        if not mobile_in_progress:
-            mobile_in_progress = True
-            mobile_frames = 1
-            if not mobile_recording:
-                mobile_recording = True
-                fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-                mobile_video = cv2.VideoWriter("output_mobiledetection.mp4", fourcc, 30, (FRAME_WIDTH, FRAME_HEIGHT))
+                turning_frames += 1
+            cv2.putText(frame, TURNING_BACK_ACTION + "!", (850, 100),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
         else:
-            mobile_frames += 1
-        cv2.putText(frame, ACTION_NAME + "!", (850, 150), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 165, 255), 2)
-        if mobile_recording and mobile_video:
-            mobile_video.write(frame)
-    else:
-        if mobile_in_progress:
-            mobile_in_progress = False
-            if mobile_frames >= MOBILE_THRESHOLD:
-                if mobile_recording and mobile_video:
-                    mobile_video.release()
-                now_save = datetime.now()
-                timestamp = now_save.strftime("%Y-%m-%d_%H-%M-%S")
-                proof_filename = f"output_mobiledetection_{timestamp}.mp4"
-                date_db = now_save.date().isoformat()
-                time_db = now_save.time().strftime('%H:%M:%S')
-                cursor.execute(
-                    "SELECT id FROM app_lecturehall WHERE hall_name=%s AND building=%s LIMIT 1",
-                    (LECTURE_HALL_NAME, BUILDING)
-                )
-                hall_result = cursor.fetchone()
-                hall_id = hall_result[0] if hall_result else None
-                local_temp = "output_mobiledetection.mp4"
-                dest_path = os.path.join(MEDIA_DIR, proof_filename)
-                shutil.copy(local_temp, dest_path)
-                if IS_CLIENT:
-                    remote_dest = f"./DetectSus/media/{proof_filename}"
-                    scp.put(local_temp, remote_dest)
-                sql = """
-                    INSERT INTO app_malpraticedetection (date, time, malpractice, proof, lecture_hall_id)
-                    VALUES (%s, %s, %s, %s, %s)
-                """
-                values = (date_db, time_db, ACTION_NAME, proof_filename, hall_id)
-                cursor.execute(sql, values)
-                db.commit()
+            if turning_in_progress:
+                turning_in_progress = False
+                if turning_frames >= TURNING_THRESHOLD:
+                    if turning_recording and turning_video:
+                        turning_video.release()
+                    now_save = datetime.now()
+                    timestamp = now_save.strftime("%Y-%m-%d_%H-%M-%S")
+                    proof_filename = f"output_turningback_{timestamp}.mp4"
+                    date_db = now_save.date().isoformat()
+                    time_db = now_save.time().strftime('%H:%M:%S')
+                    cursor.execute(
+                        "SELECT id FROM app_lecturehall WHERE hall_name=%s AND building=%s LIMIT 1",
+                        (LECTURE_HALL_NAME, BUILDING)
+                    )
+                    hall_result = cursor.fetchone()
+                    hall_id = hall_result[0] if hall_result else None
+                    local_temp = "output_turningback.mp4"
+                    dest_path = os.path.join(MEDIA_DIR, proof_filename)
+                    shutil.copy(local_temp, dest_path)
+                    if IS_CLIENT:
+                        remote_dest = f"./DetectSus/media/{proof_filename}"
+                        scp.put(local_temp, remote_dest)
+                    sql = """
+                        INSERT INTO app_malpraticedetection (date, time, malpractice, proof, lecture_hall_id)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """
+                    values = (date_db, time_db, TURNING_BACK_ACTION, proof_filename, hall_id)
+                    cursor.execute(sql, values)
+                    db.commit()
+                else:
+                    if turning_recording and turning_video:
+                        turning_video.release()
+                    if os.path.exists("output_turningback.mp4"):
+                        os.remove("output_turningback.mp4")
+                turning_frames = 0
+                turning_recording = False
+                turning_video = None
+
+        if turning_in_progress and turning_recording and turning_video:
+            turning_video.write(frame)
+
+        # ------------------------
+        # Mobile Phone Detection with Mobile Model
+        # ------------------------
+        try:
+            mobile_results = mobile_model(frame)
+        except Exception as e:
+            print("Mobile detection error:", e)
+            mobile_results = []
+
+        mobile_detected = False
+        for result in mobile_results:
+            if result.boxes is not None:
+                for box in result.boxes:
+                    if int(box.cls) == 67:  # Class 67 represents mobile phone
+                        mobile_detected = True
+                        x1, y1, x2, y2 = map(int, box.xyxy[0])
+                        # Draw an orange rectangle and label
+                        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 165, 255), 2)
+                        cv2.putText(frame, "Mobile", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 165, 255), 2)
+
+        # Update state for mobile detection
+        if mobile_detected:
+            if not mobile_in_progress:
+                mobile_in_progress = True
+                mobile_frames = 1
+                if not mobile_recording:
+                    mobile_recording = True
+                    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+                    mobile_video = cv2.VideoWriter("output_mobiledetection.mp4", fourcc, 30, (FRAME_WIDTH, FRAME_HEIGHT))
             else:
-                if mobile_recording and mobile_video:
-                    mobile_video.release()
-                if os.path.exists("output_mobiledetection.mp4"):
-                    os.remove("output_mobiledetection.mp4")
-            mobile_frames = 0
-            mobile_recording = False
-            mobile_video = None
+                mobile_frames += 1
+            cv2.putText(frame, ACTION_NAME + "!", (850, 150), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 165, 255), 2)
+            if mobile_recording and mobile_video:
+                mobile_video.write(frame)
+        else:
+            if mobile_in_progress:
+                mobile_in_progress = False
+                if mobile_frames >= MOBILE_THRESHOLD:
+                    if mobile_recording and mobile_video:
+                        mobile_video.release()
+                    now_save = datetime.now()
+                    timestamp = now_save.strftime("%Y-%m-%d_%H-%M-%S")
+                    proof_filename = f"output_mobiledetection_{timestamp}.mp4"
+                    date_db = now_save.date().isoformat()
+                    time_db = now_save.time().strftime('%H:%M:%S')
+                    cursor.execute(
+                        "SELECT id FROM app_lecturehall WHERE hall_name=%s AND building=%s LIMIT 1",
+                        (LECTURE_HALL_NAME, BUILDING)
+                    )
+                    hall_result = cursor.fetchone()
+                    hall_id = hall_result[0] if hall_result else None
+                    local_temp = "output_mobiledetection.mp4"
+                    dest_path = os.path.join(MEDIA_DIR, proof_filename)
+                    shutil.copy(local_temp, dest_path)
+                    if IS_CLIENT:
+                        remote_dest = f"./DetectSus/media/{proof_filename}"
+                        scp.put(local_temp, remote_dest)
+                    sql = """
+                        INSERT INTO app_malpraticedetection (date, time, malpractice, proof, lecture_hall_id)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """
+                    values = (date_db, time_db, ACTION_NAME, proof_filename, hall_id)
+                    cursor.execute(sql, values)
+                    db.commit()
+                else:
+                    if mobile_recording and mobile_video:
+                        mobile_video.release()
+                    if os.path.exists("output_mobiledetection.mp4"):
+                        os.remove("output_mobiledetection.mp4")
+                mobile_frames = 0
+                mobile_recording = False
+                mobile_video = None
 
-    # ------------------------
-    # Display and Key Check
-    # ------------------------
-    cv2.imshow("Exam Monitoring - Merged", frame)
-    if cv2.waitKey(1) & 0xFF == ord("q"):
-        break
+        # ------------------------
+        # Display and Key Check
+        # ------------------------
+        cv2.imshow("Exam Monitoring - Merged", frame)
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
 
-# Cleanup
-cap.release()
-if turning_recording and turning_video:
-    turning_video.release()
-if mobile_recording and mobile_video:
-    mobile_video.release()
-if IS_CLIENT:
-    scp.close()
-    ssh.close()
-cv2.destroyAllWindows()
+except KeyboardInterrupt:
+    print("Received keybaord interrupt; shutting down...")
+ 
+finally:
+    # Cleanup
+    cap.release()
+    if turning_recording and turning_video:
+        turning_video.release()
+    if mobile_recording and mobile_video:
+        mobile_video.release()
+    if IS_CLIENT:
+        scp.close()
+        ssh.close()
+    cv2.destroyAllWindows()
