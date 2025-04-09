@@ -26,7 +26,7 @@ LECTURE_HALL_NAME = "Hall-1, Block A"
 BUILDING = "PG Block"
 
 DB_USER = "root"
-DB_PASSWORD = ""
+DB_PASSWORD = "Detectsus1234"
 DB_NAME = "exam_monitoring"
 
 FRAME_WIDTH = 1280
@@ -48,9 +48,9 @@ PASSING_ACTION = "Passing Paper"
 # SSH CONFIG (Only if client)
 # ========================
 if IS_CLIENT:
-    hostname = "192.168.1.7"
-    username = "SHRUTI S"
-    password_ssh = "1234shibu"
+    hostname = "192.168.39.44"
+    username = "allen"
+    password_ssh = "5321"
 
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -339,7 +339,7 @@ while cap.isOpened():
 
                 # If client => scp
                 if IS_CLIENT:
-                    remote_dest = f"./Documents/Repos/DetectSus/application/application/media/{proof_filename}"
+                    remote_dest = f"./DetectSus/media/{proof_filename}"
                     scp.put(local_temp, remote_dest)
 
                 # Insert DB
@@ -400,7 +400,7 @@ while cap.isOpened():
 
                 # if client => scp
                 if IS_CLIENT:
-                    remote_dest = f"./Documents/Repos/DetectSus/application/application/media/{proof_filename}"
+                    remote_dest = f"./DetectSus/media/{proof_filename}"
                     scp.put(local_temp, remote_dest)
 
                 # Insert DB

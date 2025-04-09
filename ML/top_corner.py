@@ -21,11 +21,11 @@ USE_CAMERA = True
 CAMERA_INDEX = 0
 VIDEO_PATH = "test_videos/Top_Corner.mp4"
 
-LECTURE_HALL_NAME = "LH2"
-BUILDING = "KE Block"
+LECTURE_HALL_NAME = "LH1"
+BUILDING = "Main Building"
 
 DB_USER = "root"
-DB_PASSWORD = ""
+DB_PASSWORD = "Detectsus1234"
 DB_NAME = "exam_monitoring"
 
 FRAME_WIDTH = 1280
@@ -47,9 +47,9 @@ HAND_RAISE_ACTION = "Hand Raised"
 # SSH CONFIG (Only if client)
 # ========================
 if IS_CLIENT:
-    hostname = "192.168.1.7"
-    username = "SHRUTI S"
-    password_ssh = "1234shibu"
+    hostname = "192.168.39.44"
+    username = "allen"
+    password_ssh = "5321"
 
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -247,7 +247,7 @@ while cap.isOpened():
                 shutil.copy(local_temp, dest_path)
 
                 if IS_CLIENT:
-                    remote_dest = f"./Documents/Repos/DetectSus/application/application/media/{proof_filename}"
+                    remote_dest = f"./DetectSus/media/{proof_filename}"
                     scp.put(local_temp, remote_dest)
 
                 # DB insert
@@ -311,7 +311,7 @@ while cap.isOpened():
                 shutil.copy(local_temp, dest_path)
 
                 if IS_CLIENT:
-                    remote_dest = f"./Documents/Repos/DetectSus/application/application/media/{proof_filename}"
+                    remote_dest = f"./DetectSus/media/{proof_filename}"
                     scp.put(local_temp, remote_dest)
 
                 # DB insert

@@ -8,7 +8,7 @@ from datetime import datetime
 from ultralytics import YOLO
 
 # If running on the client, import paramiko + scp
-IS_CLIENT = True  # Set True on client, False on host
+IS_CLIENT = False  # Set True on client, False on host
 
 if IS_CLIENT:
     import paramiko
@@ -18,20 +18,20 @@ if IS_CLIENT:
 # CONFIGURABLE VARIABLES
 # ========================
 USE_CAMERA = True
-CAMERA_INDEX = 1
+CAMERA_INDEX = 0
 VIDEO_PATH = "test_videos/Phone_2.mp4"
 
 LECTURE_HALL_NAME = "LH2"
 BUILDING = "KE Block"
 
 DB_USER = "root"
-DB_PASSWORD = ""
+DB_PASSWORD = "Detectsus1234"
 DB_NAME = "exam_monitoring"
 
 FRAME_WIDTH = 1280
 FRAME_HEIGHT = 720
 
-MOBILE_MODEL_PATH = "yolo11m.pt"
+MOBILE_MODEL_PATH = "yolo11n.pt"
 MEDIA_DIR = "../media/"
 ACTION_NAME = "Mobile Phone Detected"
 MOBILE_THRESHOLD = 3
@@ -41,9 +41,9 @@ MOBILE_THRESHOLD = 3
 # SSH CONFIG (Client Only)
 # ========================
 if IS_CLIENT:
-    hostname = "192.168.1.7"
-    username = "SHRUTI S"
-    password_ssh = "1234shibu"
+    hostname = "192.168.39.44"
+    username = "allen"
+    password_ssh = "5321"
 
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -161,7 +161,7 @@ while cap.isOpened():
 
                 # Upload to host if client
                 if IS_CLIENT:
-                    remote_media_path = f"./Documents/Repos/DetectSus/application/application/media/{proof_filename}"
+                    remote_media_path = f"./DetectSus/media/{proof_filename}"
                     scp.put("output_mobiledetection.mp4", remote_media_path)
 
                 # Log to DB
