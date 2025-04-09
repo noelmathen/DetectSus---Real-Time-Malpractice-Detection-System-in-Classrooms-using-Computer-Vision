@@ -418,7 +418,7 @@ def trigger_camera_scripts(request):
             #     "ip": "192.168.154.9",
             #     "username": "allen",
             #     "password": "5213",
-            #     "script_path": "D:\\application\\ML\\front.py",
+            #     "script_path": "D:\\application\\ML\\top_corner.py",
             #     "mode": "remote",
             #     "use_venv": False  # disable venv activation for this host
             # },
@@ -432,12 +432,12 @@ def trigger_camera_scripts(request):
             #     "use_venv": False 
             # },
             {
-                "name": "Top Angle - Remote Client(Noel)",
+                "name": "Front Angle - Remote Client(Noel)",
                 "ip": "192.168.1.8",
                 "username": "noelmathen",
                 "password": "134652",
                 "mode": "remote",
-                "script_path": "C:\\Users\\noelmathen\\Documents\\PROJECTS\\DetectSus\\ML\\top.py",
+                "script_path": "C:\\Users\\noelmathen\\Documents\\PROJECTS\\DetectSus\\ML\\front.py",
                 "use_venv": True
             }
         ]
