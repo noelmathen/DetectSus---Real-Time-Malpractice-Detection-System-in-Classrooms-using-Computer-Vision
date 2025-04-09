@@ -1,32 +1,5 @@
+<!-- malpractice_logs.html -->
 {% include 'header.html' %}
-
-<!-- jQuery, then Popper.js, then Bootstrap JS (v4.x) -->
-
-<!-- Ding Sound (Only plays when there is an "alert" in context) -->
-<audio id="dingSound" src="https://www.fesliyanstudios.com/play-mp3/4386" preload="auto"></audio>
-{% if alert %}
-<script>
-  // As soon as the DOM is ready
-  document.addEventListener('DOMContentLoaded', function () {
-    const sound = document.getElementById("dingSound");
-    // Attempt to play audio
-    sound.play()
-      .then(() => {
-        // Audio playing was successful, wait a bit then show alert
-        setTimeout(() => {
-          alert("New Malpractice Detected!!");
-        }, 300);
-      })
-      .catch((error) => {
-        // Autoplay likely blocked; show alert anyway
-        console.warn("Audio autoplay blocked:", error);
-        alert("New Malpractice Detected!!");
-      });
-  });
-</script>
-{% endif %}
-
-<!-- Page-Specific Styles -->
 <style>
   body {
     background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
@@ -170,6 +143,155 @@
   <div class="container">
     <h2 class="malpractice-heading">Malpractice Log</h2>
 
+    {% if request.user.lecturehall %}
+      <div class="alert alert-success text-center">
+        <strong>Assignment Status:</strong> You are currently assigned to 
+        {{ request.user.lecturehall.building }} - {{ request.user.lecturehall.hall_name }}.
+      </div>
+    {% else %}
+      <div class="alert alert-warning text-center">
+        <strong>Assignment Status:</strong> You haven't been assigned to any classrooms.
+      </div>
+    {% endif %}
+
+
+
+
+    <!-- FILTER BAR -->
+    <div class="filter-bar mb-4">
+      <form method="get">
+        {% if request.user.is_superuser %}
+          <!-- ADMIN FILTERS (2 Rows) -->
+          <div class="form-row">
+            <!-- Filter by Date -->
+            <div class="form-group col-md-3">
+              <label for="date">Filter by Date:</label>
+              <input type="date" name="date" id="date" class="form-control" value="{{ date_filter }}">
+            </div>
+            <!-- Filter by Time (FN & AN) -->
+            <div class="form-group col-md-2">
+              <label for="time">Filter by Time:</label>
+              <select name="time" id="time" class="form-control">
+                <option value="">All</option>
+                <option value="FN" {% if time_filter == 'FN' %}selected{% endif %}>FN (Before Noon)</option>
+                <option value="AN" {% if time_filter == 'AN' %}selected{% endif %}>AN (After Noon)</option>
+              </select>
+            </div>
+            <!-- Filter by Malpractice Type -->
+            <div class="form-group col-md-3">
+              <label for="malpractice_type">Malpractice Type:</label>
+              <select name="malpractice_type" id="malpractice_type" class="form-control">
+                <option value="">All Types</option>
+                <option value="Leaning" {% if malpractice_filter == 'Leaning' %}selected{% endif %}>Leaning</option>
+                <option value="Mobile Phone Detected" {% if malpractice_filter == 'Mobile Phone Detected' %}selected{% endif %}>Mobile Phone Detected</option>
+                <option value="Passing Paper" {% if malpractice_filter == 'Passing Paper' %}selected{% endif %}>Passing Paper</option>
+                <option value="Turning Back" {% if malpractice_filter == 'Turning Back' %}selected{% endif %}>Turning Back</option>
+              </select>
+            </div>
+            <!-- Assigned Faculty -->
+            <div class="form-group col-md-4">
+              <label for="faculty">Assigned Faculty:</label>
+              <select name="faculty" id="faculty" class="form-control">
+                <option value="">All Faculty</option>
+                {% for f in faculty_list %}
+                  <option value="{{ f.id }}" 
+                    {% if faculty_filter|stringformat:"s" == f.id|stringformat:"s" %}selected{% endif %}>
+                    {{ f.get_full_name|default:f.username }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <!-- Search Lecture Hall -->
+            <div class="form-group col-md-4">
+              <label for="q">Search Lecture Hall:</label>
+              <input type="text" name="q" id="q" class="form-control" 
+                    placeholder="Enter LH name (e.g., LH1)" value="{{ query }}">
+            </div>
+            <!-- Filter by Building -->
+            <div class="form-group col-md-4">
+              <label for="building">Filter by Building:</label>
+              <select name="building" class="form-control" id="building">
+                <option value="">All Buildings</option>
+                {% for b in buildings %}
+                  <option value="{{ b }}" {% if building_filter == b %}selected{% endif %}>{{ b }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <!-- Filter by Assignment -->
+            <div class="form-group col-md-3">
+              <label for="assigned">Filter by Assignment:</label>
+              <select name="assigned" class="form-control" id="assigned">
+                <option value="">All</option>
+                <option value="assigned" {% if assignment_filter == 'assigned' %}selected{% endif %}>Assigned</option>
+                <option value="unassigned" {% if assignment_filter == 'unassigned' %}selected{% endif %}>Unassigned</option>
+              </select>
+            </div>
+            <!-- Apply Button -->
+            <div class="form-group col-md-1 d-flex align-items-end">
+              <button type="submit" class="btn btn-primary w-100">
+                <i class="fas fa-filter"></i>
+              </button>
+            </div>
+          </div>
+        {% else %}
+          <!-- TEACHER FILTERS (Single Row) -->
+          <div class="form-row">
+            <!-- Filter by Date -->
+            <div class="form-group col-md-2">
+              <label for="date">Filter by Date:</label>
+              <input type="date" name="date" id="date" class="form-control" value="{{ date_filter }}">
+            </div>
+            <!-- Filter by Time -->
+            <div class="form-group col-md-2">
+              <label for="time">Filter by Time:</label>
+              <select name="time" id="time" class="form-control">
+                <option value="">All</option>
+                <option value="FN" {% if time_filter == 'FN' %}selected{% endif %}>FN</option>
+                <option value="AN" {% if time_filter == 'AN' %}selected{% endif %}>AN</option>
+              </select>
+            </div>
+            <!-- Malpractice Type -->
+            <div class="form-group col-md-2">
+              <label for="malpractice_type">Malpractice:</label>
+              <select name="malpractice_type" id="malpractice_type" class="form-control">
+                <option value="">All Types</option>
+                <option value="Leaning" {% if malpractice_filter == 'Leaning' %}selected{% endif %}>Leaning</option>
+                <option value="Mobile Phone Detected" {% if malpractice_filter == 'Mobile Phone Detected' %}selected{% endif %}>Mobile Phone Detected</option>
+                <option value="Passing Paper" {% if malpractice_filter == 'Passing Paper' %}selected{% endif %}>Passing Paper</option>
+                <option value="Turning Back" {% if malpractice_filter == 'Turning Back' %}selected{% endif %}>Turning Back</option>
+              </select>
+            </div>
+            <!-- Building -->
+            <div class="form-group col-md-2">
+              <label for="building">Building:</label>
+              <select name="building" class="form-control" id="building">
+                <option value="">All</option>
+                {% for b in buildings %}
+                  <option value="{{ b }}" {% if building_filter == b %}selected{% endif %}>{{ b }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <!-- Lecture Hall Search -->
+            <div class="form-group col-md-3">
+              <label for="q">Lecture Hall:</label>
+              <input type="text" name="q" id="q" class="form-control" 
+                    placeholder="Enter LH name (e.g., LH1)" value="{{ query }}">
+            </div>
+            <!-- Apply Button -->
+            <div class="form-group col-md-1 d-flex align-items-end">
+              <button type="submit" class="btn btn-primary w-100">
+                <i class="fas fa-filter"></i>
+              </button>
+            </div>
+          </div>
+        {% endif %}
+      </form>
+    </div>
+    <!-- END OF FILTER BAR -->
+
+    <!-- Malpractice Log Table -->
     <div class="table-container">
       <table class="table table-striped">
         <thead>
@@ -273,6 +395,13 @@
 </div>
 
 <script>
+  // Filtering data made to default when page is refreshed
+  window.addEventListener("load", function() {
+      if (window.location.search) {
+          history.replaceState({}, document.title, window.location.pathname);
+      }
+  });
+
   // VIEW VIDEO
   function playVideo(videoUrl) {
     const videoPlayer = document.getElementById('videoPlayer');

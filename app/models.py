@@ -9,12 +9,12 @@ class LectureHall(models.Model):
     BUILDING_CHOICES = [
         ('MAIN', 'Main Building'),
         ('KE', 'KE Block'),
+        ('PG', 'PG Block'),
         # Add more if needed
     ]
     building = models.CharField(max_length=50, choices=BUILDING_CHOICES)
     hall_name = models.CharField(max_length=50)  # e.g. "LH1", "LH2", etc.
     assigned_teacher = models.OneToOneField(User, on_delete=models.SET_NULL, null=True, blank=True)
-
     def __str__(self):
         return f"{self.building} - {self.hall_name}"
 

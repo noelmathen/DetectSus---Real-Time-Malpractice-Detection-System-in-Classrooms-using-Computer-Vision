@@ -154,22 +154,52 @@ def change_password(request):
 
 @login_required
 def malpractice_log(request):
-    if request.user.is_superuser:
-        logs = MalpraticeDetection.objects.all().order_by('-date', '-time')
-    else:
-        try:
-            teacher_profile = request.user.teacherprofile
-        except TeacherProfile.DoesNotExist:
-            logs = MalpraticeDetection.objects.none()
-        else:
-            # Get the actual LectureHall objects (or their IDs)
-            assigned_halls = LectureHall.objects.filter(assigned_teacher=request.user)
-            logs = MalpraticeDetection.objects.filter(
-                lecture_hall__in=assigned_halls,
-                verified=True,
-                is_malpractice=True
-            ).order_by('-date', '-time')
+    # Retrieve filter parameters from the GET request
+    date_filter = request.GET.get('date', '').strip()
+    time_filter = request.GET.get('time', '').strip()
+    malpractice_filter = request.GET.get('malpractice_type', '').strip()
+    building_filter = request.GET.get('building', '').strip()
+    query = request.GET.get('q', '').strip()
+    faculty_filter = request.GET.get('faculty', '').strip()
+    assignment_filter = request.GET.get('assigned', '').strip()
 
+    # Base Queryset based on user role
+    if request.user.is_superuser:
+        logs = MalpraticeDetection.objects.all()
+    else:
+        # For teacher users, retrieve lecture halls assigned to them based on LectureHall.assigned_teacher.
+        assigned_halls = LectureHall.objects.filter(assigned_teacher=request.user)
+        logs = MalpraticeDetection.objects.filter(
+            lecture_hall__in=assigned_halls,
+            verified=True,
+            is_malpractice=True
+        )
+
+    # Apply Filtering
+    if date_filter:
+        logs = logs.filter(date=date_filter)
+    if time_filter:
+        if time_filter.upper() == "FN":
+            logs = logs.filter(time__lt="12:00:00")
+        elif time_filter.upper() == "AN":
+            logs = logs.filter(time__gte="12:00:00")
+    if malpractice_filter:
+        logs = logs.filter(malpractice=malpractice_filter)
+    if building_filter:
+        logs = logs.filter(lecture_hall__building=building_filter)
+    if query:
+        logs = logs.filter(lecture_hall__hall_name__icontains=query)
+    if faculty_filter:
+        logs = logs.filter(lecture_hall__assigned_teacher__id=faculty_filter)
+    if assignment_filter:
+        if assignment_filter.lower() == "assigned":
+            logs = logs.filter(lecture_hall__assigned_teacher__isnull=False)
+        elif assignment_filter.lower() == "unassigned":
+            logs = logs.filter(lecture_hall__assigned_teacher__isnull=True)
+
+    logs = logs.order_by('-date', '-time')
+
+    # Update session record count to trigger alert if new logs appear
     record_count = logs.count()
     alert = False
     if "record_count" in request.session:
@@ -179,11 +209,21 @@ def malpractice_log(request):
     else:
         request.session["record_count"] = record_count
 
-    return render(request, 'malpractice_log.html', {
+    context = {
         'result': logs,
         'alert': alert,
-        'is_admin': request.user.is_superuser
-    })
+        'is_admin': request.user.is_superuser,
+        'date_filter': date_filter,
+        'time_filter': time_filter,
+        'malpractice_filter': malpractice_filter,
+        'building_filter': building_filter,
+        'query': query,
+        'faculty_filter': faculty_filter,
+        'assignment_filter': assignment_filter,
+        'faculty_list': User.objects.filter(teacherprofile__isnull=False, is_superuser=False),
+        'buildings': LectureHall.objects.values_list('building', flat=True).distinct(),
+    }
+    return render(request, 'malpractice_log.html', context)
 
 
 
@@ -332,16 +372,17 @@ def view_teachers(request):
     assigned_filter = request.GET.get('assigned', '')
     building_filter = request.GET.get('building', '')
 
-    teachers = User.objects.filter(is_superuser=False).select_related('teacherprofile')
+    # Use the reverse relation "lecturehall" (LectureHall.assigned_teacher) 
+    teachers = User.objects.filter(is_superuser=False).select_related('lecturehall')
     buildings = LectureHall.objects.values_list('building', flat=True).distinct()
 
     if assigned_filter == 'assigned':
-        teachers = teachers.filter(teacherprofile__lecture_hall__isnull=False)
+        teachers = teachers.filter(lecturehall__isnull=False)
     elif assigned_filter == 'unassigned':
-        teachers = teachers.filter(teacherprofile__lecture_hall__isnull=True)
+        teachers = teachers.filter(lecturehall__isnull=True)
 
     if building_filter:
-        teachers = teachers.filter(teacherprofile__lecture_hall__building=building_filter)
+        teachers = teachers.filter(lecturehall__building=building_filter)
 
     context = {
         'teachers': teachers,
@@ -350,6 +391,7 @@ def view_teachers(request):
         'building_filter': building_filter,
     }
     return render(request, 'view_teachers.html', context)
+
 
 
 

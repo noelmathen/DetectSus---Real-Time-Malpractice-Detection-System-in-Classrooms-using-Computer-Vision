@@ -140,12 +140,12 @@
               {% endif %}
             </td>
             <td>
-              {% if teacher.teacherprofile and teacher.teacherprofile.lecture_hall %}
-                {{ teacher.teacherprofile.lecture_hall.building }} - {{ teacher.teacherprofile.lecture_hall.hall_name }}
+              {% if teacher.lecturehall %}
+                {{ teacher.lecturehall.building }} - {{ teacher.lecturehall.hall_name }}
               {% else %}
                 <span class="text-muted">Not Assigned</span>
               {% endif %}
-            </td>
+            </td>            
           </tr>
           {% empty %}
           <tr>
