@@ -143,15 +143,17 @@
   <div class="container">
     <h2 class="malpractice-heading">Malpractice Log</h2>
 
-    {% if request.user.lecturehall %}
-      <div class="alert alert-success text-center">
-        <strong>Assignment Status:</strong> You are currently assigned to 
-        {{ request.user.lecturehall.building }} - {{ request.user.lecturehall.hall_name }}.
-      </div>
-    {% else %}
-      <div class="alert alert-warning text-center">
-        <strong>Assignment Status:</strong> You haven't been assigned to any classrooms.
-      </div>
+    {% if not request.user.is_superuser %}
+      {% if request.user.lecturehall %}
+        <div class="alert alert-success text-center">
+          <strong>Assignment Status:</strong> You are currently assigned to 
+          {{ request.user.lecturehall.building }} - {{ request.user.lecturehall.hall_name }}.
+        </div>
+      {% else %}
+        <div class="alert alert-warning text-center">
+          <strong>Assignment Status:</strong> You haven't been assigned to any classrooms.
+        </div>
+      {% endif %}
     {% endif %}
 
 
