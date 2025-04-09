@@ -40,3 +40,5 @@ test_videos/
 
 *.mp4
 output*
+
+*.sql
