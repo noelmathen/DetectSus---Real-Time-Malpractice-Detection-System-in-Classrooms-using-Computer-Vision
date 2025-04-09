@@ -24,68 +24,61 @@ def send_sms_notification(to_phone, message_body):
     )
 
 
+
+RUNNING_SCRIPTS = {}
+
 def ssh_run_script(ip, username, password, script_path, use_venv=True, venv_path=None):
     try:
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(ip, username=username, password=password)
 
-        # Get the directory and filename of the script
+        # Get the directory and file name of the script
         script_dir = os.path.dirname(script_path)
         script_name = os.path.basename(script_path)
         
         # Determine activation command if a virtual environment is to be used
         if use_venv:
-            # If no venv_path is provided, use the default location for this user
             if not venv_path:
                 venv_path = f'C:/Users/{username}/Documents/PROJECTS/DetectSus/susenv/Scripts/activate.bat'
             activation_cmd = f'call "{venv_path}" && '
         else:
             activation_cmd = ""
         
-        # Build the command using proper quoting; using cmd /c so the shell exits after execution
+        # Build the command using proper quoting; use cmd /c so the shell exits after execution
         command = f'cmd /c "cd /d \"{script_dir}\" && {activation_cmd}python \"{script_name}\""'
         
-        stdin, stdout, stderr = ssh.exec_command(command)
-
-        # Stream output (real-time)
-        for line in iter(stdout.readline, ""):
-            print(f"[{username}] {line.strip()}")
+        # Open a session with a pseudo-terminal; this allows us to send Ctrl+C later.
+        channel = ssh.get_transport().open_session()
+        channel.get_pty()
+        channel.exec_command(command)
         
-        # Read all outputs
-        out = stdout.read().decode()
-        err = stderr.read().decode()
-        ssh.close()
-        if err:
-            return False, err
-        return True, out
+        # Optionally, you can start a thread to read output asynchronously.
+        # For now, we just store the SSH client and channel in our global dictionary.
+        key = f"{username}_{script_name}"
+        RUNNING_SCRIPTS[key] = {
+            "mode": "remote",
+            "ssh": ssh,
+            "channel": channel
+        }
+        print(f"\n[{username}] Remote script {script_name} started.")
+        return True, "Remote script started successfully."
     except Exception as e:
         return False, str(e)
 
 
-
-# Helper function to run a script locally (host machine)
 def local_run_script(script_path):
     try:
         # Get the directory and file name from the script_path
         script_dir = os.path.dirname(script_path)
         script_name = os.path.basename(script_path)
 
-        #Use this if there is virtual environemnet in host laptop also
-        # activate = r'C:\Users\SHRUTI S\Documents\Repos\DetectSus\application\venv\Scripts\activate.bat'
-
-        # # Build the command with proper quoting to handle spaces in the paths.
-        # command = 'cmd /c "cd /d \"{}\" && call \"{}\" && python \"{}\""'.format(
-        #     script_dir, activate, script_name
-        # )
-
-
         # Build the command without virtual environment activation.
-        # Using proper quoting to handle spaces in the paths.
         command = 'cmd /c "cd /d \"{}\" && python \"{}\""'.format(
             script_dir, script_name
         )
 
+        # Start the process
         process = subprocess.Popen(
             command,
             stdout=subprocess.PIPE,
@@ -94,13 +87,14 @@ def local_run_script(script_path):
             text=True
         )
 
-        # Optionally, stream the output line-by-line
-        for line in process.stdout:
-            print(f"[Local - Host] {line.strip()}")
-
-        out, err = process.communicate()
-        if process.returncode != 0:
-            return False, err
-        return True, out
+        key = f"local_{script_name}"
+        RUNNING_SCRIPTS[key] = {
+            "mode": "local",
+            "process": process
+        }
+        print(f"[Local] Script {script_name} started.")
+        return True, "Local script started successfully."
     except Exception as e:
-        return False, str(e)
+        return False, str(e)  
+
+

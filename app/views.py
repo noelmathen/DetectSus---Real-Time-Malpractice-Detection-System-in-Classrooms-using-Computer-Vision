@@ -23,6 +23,8 @@ from .utils import ssh_run_script, local_run_script
 import threading
 import os
 import subprocess
+from .utils import RUNNING_SCRIPTS 
+import time
 
 # Global stop event
 stop_event = Event()
@@ -403,7 +405,7 @@ def run_cameras_page(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser)  # or your own is_admin function
+@user_passes_test(lambda u: u.is_superuser) 
 def trigger_camera_scripts(request):
     if request.method == 'POST':
         # List of configurations for each angle
@@ -465,3 +467,44 @@ def trigger_camera_scripts(request):
             threading.Thread(target=run_on_client, args=(config,)).start()
 
         return JsonResponse({'status': 'started'})
+    
+
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def stop_camera_scripts(request):
+    if request.method == 'POST':
+        # Iterate over a copy of the keys so we can safely remove items
+        for key in list(RUNNING_SCRIPTS.keys()):
+            handle = RUNNING_SCRIPTS[key]
+            if handle.get("mode") == "remote":
+                try:
+                    channel = handle.get("channel")
+                    if channel:
+                        # Send Ctrl+C to the remote process
+                        channel.send("\x03")
+                        # Wait a moment for the remote process to handle the interrupt
+                        time.sleep(2)
+                        channel.close()
+                    ssh = handle.get("ssh")
+                    if ssh:
+                        ssh.close()
+                    print(f"\n[{key}] Remote process terminated successfully.")
+                except Exception as e:
+                    print(f"\n[{key}] Error terminating remote process: {e}")
+            elif handle.get("mode") == "local":
+                process = handle.get("process")
+                if process:
+                    try:
+                        process.terminate()
+                        process.wait(timeout=5)
+                        print(f"\n[{key}] Local process terminated successfully.")
+                    except Exception as e:
+                        print(f"\n[{key}] Error terminating local process: {e}")
+            RUNNING_SCRIPTS.pop(key, None)
+        return JsonResponse({"status": "stopped"})
+    return JsonResponse({"error": "Invalid request method"}, status=400)
+
+
+
+
