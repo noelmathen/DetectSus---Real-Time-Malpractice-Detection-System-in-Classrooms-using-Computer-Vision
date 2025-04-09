@@ -283,7 +283,7 @@ def review_malpractice(request):
             subject = 'Malpractice Alert: New Case Reviewed'
             message_body = (
                 f"Dear {teacher_user.get_full_name() or teacher_user.username},\n\n"
-                f"A malpractice has been detected and approved by the admin.\n\n"
+                f"A malpractice has been detected in your classroom and has been approved by the examination cell.\n\n"
                 f"Details:\n"
                 f"- 📅 Date: {log.date}\n"
                 f"- ⏰ Time: {log.time}\n"

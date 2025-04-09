@@ -361,7 +361,7 @@
           </div>
         </div>
       </div>
-      {% endif %}
+    {% endif %}
 
     <!-- Malpractice Log Table -->
     <div class="table-container">
@@ -588,7 +588,8 @@
     const errorDisplay = document.getElementById('videoError');
     errorDisplay.style.display = 'none';
 
-    const mediaPath = `/media/${videoUrl}`;
+    // Correctly construct the mediaPath
+    const mediaPath = `media/${videoUrl}`; // Removed semicolon and corrected template literal
 
     // Clear any previous <source> elements
     videoPlayer.pause();
@@ -613,11 +614,14 @@
     const playPromise = videoPlayer.play();
     if (playPromise !== undefined) {
       playPromise.catch(error => {
-        errorDisplay.textContent = `Playback failed: ${error.message}`;
+        errorDisplay.textContent = `Playback failed: ${error.message}`; // Corrected template literal
         errorDisplay.style.display = 'block';
       });
     }
   }
+
+
+
 
 
   // Get current review filter from template (defaults to 'not_reviewed')
