@@ -8,7 +8,7 @@ from datetime import datetime
 from ultralytics import YOLO
 
 # If running on the client, import paramiko and scp
-IS_CLIENT = False  # Set True on client, False on host
+IS_CLIENT = True  # Set True on client, False on host
 
 if IS_CLIENT:
     import paramiko
@@ -18,7 +18,7 @@ if IS_CLIENT:
 # CONFIGURABLE VARIABLES
 # ========================
 USE_CAMERA = False
-CAMERA_INDEX = 0
+CAMERA_INDEX = 1
 # VIDEO_PATH = "test_videos/Top_Corner.mp4"  # used if USE_CAMERA is False
 VIDEO_PATH = "test_videos/Phone_2.mp4"  # used if USE_CAMERA is False
 

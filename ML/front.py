@@ -18,7 +18,7 @@ if IS_CLIENT:
 # CONFIGURABLE VARIABLES
 # ========================
 USE_CAMERA = True
-CAMERA_INDEX = 0
+CAMERA_INDEX = 1
 VIDEO_PATH = "test_videos/Front.mp4"
 # VIDEO_PATH = "test_videos/Passing_Paper.mp4"
 # VIDEO_PATH = "test_videos/Phone_2.mp4"
