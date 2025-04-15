@@ -8,7 +8,7 @@ from datetime import datetime
 from ultralytics import YOLO
 
 # If running on the client, import paramiko + scp
-IS_CLIENT = True  # Set True on client, False on host
+IS_CLIENT = False  # Set True on client, False on host
 
 if IS_CLIENT:
     import paramiko
@@ -25,7 +25,7 @@ LECTURE_HALL_NAME = "LH2"
 BUILDING = "KE Block"
 
 DB_USER = "root"
-DB_PASSWORD = "Detectsus1234"
+DB_PASSWORD = "123"
 DB_NAME = "exam_monitoring"
 
 FRAME_WIDTH = 1280

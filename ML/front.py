@@ -8,7 +8,7 @@ from datetime import datetime
 from ultralytics import YOLO
 
 # If running on the client, import paramiko + scp
-IS_CLIENT = True  # Change to True on client, False on host
+IS_CLIENT = False  # Change to True on client, False on host
 
 if IS_CLIENT:
     import paramiko
@@ -18,7 +18,7 @@ if IS_CLIENT:
 # CONFIGURABLE VARIABLES
 # ========================
 USE_CAMERA = True
-CAMERA_INDEX = 1
+CAMERA_INDEX = 0
 VIDEO_PATH = "test_videos/Front.mp4"
 # VIDEO_PATH = "test_videos/Passing_Paper.mp4"
 # VIDEO_PATH = "test_videos/Phone_2.mp4"
@@ -27,7 +27,7 @@ LECTURE_HALL_NAME = "Hall-1, Block A"
 BUILDING = "PG Block"
 
 DB_USER = "root"
-DB_PASSWORD = "Detectsus1234"
+DB_PASSWORD = "123"
 DB_NAME = "exam_monitoring"
 
 FRAME_WIDTH = 1280
