@@ -424,11 +424,11 @@ def trigger_camera_scripts(request):
     if request.method == 'POST':
         # List of configurations for each angle
         client_configs = [
-            # {
-            #     "name": "Top Corner - Host(Allen 2)",
-            #     "script_path": "C:\\Users\\allen\\DetectSus\\ML\\top_corner.py",
-            #     "mode": "local"
-            # },
+            {
+                "name": "Top Corner - Host(Allen 2)",
+                "script_path": "C:\\Users\\noelm\\Documents\\PROJECTS\\DetectSus\\ML\\front.py",
+                "mode": "local"
+            },
             # {
             #     "name": "Top Corner Angle - Remote Client(Allen)",
             #     "ip": "192.168.154.9",
@@ -447,15 +447,15 @@ def trigger_camera_scripts(request):
             #     "mode": "remote",
             #     "use_venv": False 
             # },
-            {
-                "name": "Front Angle - Remote Client(Noel)",
-                "ip": "192.168.1.8",
-                "username": "noelmathen",
-                "password": "134652",
-                "mode": "remote",
-                "script_path": "C:\\Users\\noelmathen\\Documents\\PROJECTS\\DetectSus\\ML\\front.py",
-                "use_venv": True
-            }
+            # {
+            #     "name": "Front Angle - Remote Client(Noel)",
+            #     "ip": "192.168.1.8",
+            #     "username": "noelmathen",
+            #     "password": "134652",
+            #     "mode": "remote",
+            #     "script_path": "C:\\Users\\noelmathen\\Documents\\PROJECTS\\DetectSus\\ML\\front.py",
+            #     "use_venv": True
+            # }
         ]
 
         # Function to run a given configuration
