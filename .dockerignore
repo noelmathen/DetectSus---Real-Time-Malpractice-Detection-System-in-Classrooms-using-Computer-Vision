@@ -23,8 +23,6 @@ output*
 test_videos/
 db.sqlite3
 
-# Environment
-.env
 
 # IDE settings
 .vscode/
