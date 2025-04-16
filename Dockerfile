@@ -1,5 +1,3 @@
-# Dockerfile
-
 FROM python:3.13-slim
 
 WORKDIR /app
@@ -22,10 +20,9 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 # Copy the entire project
 COPY . .
 
-COPY .env .
-# Collect static files (if needed)
-RUN python manage.py collectstatic --noinput
+# (Option B) Do not copy the .env file, as environment variables will be managed externally
 
 EXPOSE 8000
 
-CMD ["gunicorn", "app.wsgi:application", "--bind", "0.0.0.0:8000"]
+# Run collectstatic at runtime so that runtime environment variables are available
+CMD python manage.py collectstatic --noinput && gunicorn app.wsgi:application --bind 0.0.0.0:8000
