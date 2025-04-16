@@ -1,4 +1,4 @@
-FROM python:3.13-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
@@ -20,9 +20,9 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 # Copy the entire project
 COPY . .
 
-# (Option B) Do not copy the .env file, as environment variables will be managed externally
+# (Option B) Do not copy the .env file; environment variables will be provided at runtime
 
 EXPOSE 8000
 
-# Run collectstatic at runtime so that runtime environment variables are available
+# Collect static files at runtime so that runtime environment variables are available, then start the server.
 CMD python manage.py collectstatic --noinput && gunicorn app.wsgi:application --bind 0.0.0.0:8000
