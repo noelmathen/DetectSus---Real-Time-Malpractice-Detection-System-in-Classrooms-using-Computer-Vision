@@ -4,6 +4,13 @@
 
 ---
 
+# Live Demonstration
+> Click the thumbnail to watch the youtube video
+
+[![DetectSus Demo](https://img.youtube.com/vi/wUmAu1ub52Y/0.jpg)](https://youtu.be/wUmAu1ub52Y)
+
+---
+
 ## 🧠 Overview
 DetectSus is a real-time surveillance system designed to detect and report instances of malpractice during offline classroom examinations. By combining **object detection** (e.g., detecting prohibited items like mobile phones) and **pose estimation** (e.g., identifying suspicious behaviors like turning around or passing notes), this project aims to provide educational institutions with an **automated, scalable, and privacy-focused** exam monitoring solution.
 
