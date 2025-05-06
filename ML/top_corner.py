@@ -17,10 +17,10 @@ if IS_CLIENT:
 # ========================
 # CONFIGURABLE VARIABLES
 # ========================
-USE_CAMERA = True
-CAMERA_INDEX = 0
-# VIDEO_PATH = "test_videos/Top_Corner.mp4"  # used if USE_CAMERA is False
-VIDEO_PATH = "test_videos/Phone_2.mp4"  # used if USE_CAMERA is False
+USE_CAMERA = False
+CAMERA_INDEX = 1
+VIDEO_PATH = "test_videos/Turning_Back.mp4"  # used if USE_CAMERA is False
+# VIDEO_PATH = "test_videos/Phone.mp4"  # used if USE_CAMERA is False
 
 LECTURE_HALL_NAME = "LH1"
 BUILDING = "Main Building"
@@ -35,7 +35,7 @@ FRAME_HEIGHT = 720
 # For turning (pose) detection
 POSE_MODEL_PATH = "yolov8n-pose.pt"
 TURNING_BACK_ACTION = "Turning Back"
-TURNING_THRESHOLD = 10
+TURNING_THRESHOLD = 5
 
 # For mobile phone detection
 MOBILE_MODEL_PATH = "yolo11n.pt"
