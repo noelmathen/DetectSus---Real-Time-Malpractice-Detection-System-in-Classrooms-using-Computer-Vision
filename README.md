@@ -251,3 +251,37 @@ We welcome contributions! Please:
 4. Submit a **pull request** describing improvements or bug fixes.
 
 ---
+
+## 🖼️ Output Screenshots
+
+### 1_HomeScreen.png  
+![1_HomeScreen](https://github.com/noelmathen/DetectSus---Real-Time-Malpractice-Detection-System-in-Classrooms-using-Computer-Vision/blob/main/static/Demo%20and%20Outputs/1_HomeScreen.png?raw=true)
+
+### 2_MalpracticeLogsPage.png  
+![2_MalpracticeLogsPage](https://github.com/noelmathen/DetectSus---Real-Time-Malpractice-Detection-System-in-Classrooms-using-Computer-Vision/blob/main/static/Demo%20and%20Outputs/2_MalpracticeLogsPage.png?raw=true)
+
+### 3_ManageLectureHalls.png  
+![3_ManageLectureHalls](https://github.com/noelmathen/DetectSus---Real-Time-Malpractice-Detection-System-in-Classrooms-using-Computer-Vision/blob/main/static/Demo%20and%20Outputs/3_ManageLectureHalls.png?raw=true)
+
+### 4_ViewTeachers.png  
+![4_ViewTeachers](https://github.com/noelmathen/DetectSus---Real-Time-Malpractice-Detection-System-in-Classrooms-using-Computer-Vision/blob/main/static/Demo%20and%20Outputs/4_ViewTeachers.png?raw=true)
+
+### 5_RunCameras.png  
+![5_RunCameras](https://github.com/noelmathen/DetectSus---Real-Time-Malpractice-Detection-System-in-Classrooms-using-Computer-Vision/blob/main/static/Demo%20and%20Outputs/5_RunCameras.png?raw=true)
+
+### 6_Profile.png  
+![6_Profile](https://github.com/noelmathen/DetectSus---Real-Time-Malpractice-Detection-System-in-Classrooms-using-Computer-Vision/blob/main/static/Demo%20and%20Outputs/6_Profile.png?raw=true)
+
+### 7_MobilePhone.png  
+![7_MobilePhone](https://github.com/noelmathen/DetectSus---Real-Time-Malpractice-Detection-System-in-Classrooms-using-Computer-Vision/blob/main/static/Demo%20and%20Outputs/7_MobilePhone.png?raw=true)
+
+### 8_PassingPaper.png  
+![8_PassingPaper](https://github.com/noelmathen/DetectSus---Real-Time-Malpractice-Detection-System-in-Classrooms-using-Computer-Vision/blob/main/static/Demo%20and%20Outputs/8_PassingPaper.png?raw=true)
+
+### 9_Leaning.png  
+![9_Leaning](https://github.com/noelmathen/DetectSus---Real-Time-Malpractice-Detection-System-in-Classrooms-using-Computer-Vision/blob/main/static/Demo%20and%20Outputs/9_Leaning.png?raw=true)
+
+### 10_TurningBack.png  
+![10_TurningBack](https://github.com/noelmathen/DetectSus---Real-Time-Malpractice-Detection-System-in-Classrooms-using-Computer-Vision/blob/main/static/Demo%20and%20Outputs/10_TurningBack.png?raw=true)
+
+---
