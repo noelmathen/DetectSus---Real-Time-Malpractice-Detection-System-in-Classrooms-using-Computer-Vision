@@ -284,4 +284,5 @@ We welcome contributions! Please:
 ### 10_TurningBack.png  
 ![10_TurningBack](https://github.com/noelmathen/DetectSus---Real-Time-Malpractice-Detection-System-in-Classrooms-using-Computer-Vision/blob/main/static/Demo%20and%20Outputs/10_TurningBack.png?raw=true)
 
----
+
+
